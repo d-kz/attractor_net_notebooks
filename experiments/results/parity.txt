@@ -1,0 +1,202 @@
+
+(2018-02-28)
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			5
+n_attractor_iterations: 5,
+attractor_dynamics: 	projection
+attractor_noise_level: 	0.2
+attractor_noise_type: 	gaussian
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	0.9271 	 0.0250
+saved_test_acc 		0.9010 	 0.0278
+
+(2018-03-01)
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			5
+n_attractor_iterations: 5,
+attractor_dynamics: 	direct
+attractor_noise_level: 	0.2
+attractor_noise_type: 	gaussian
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	1.0000 	 0.0000
+saved_test_acc 		0.9734 	 0.0009
+
+(2018-03-01)
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			5
+n_attractor_iterations: 5,
+attractor_dynamics: 	direct
+attractor_noise_level: 	0.2
+attractor_noise_type: 	gaussian
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	1.0000 	 0.0000
+saved_test_acc 		0.9870 	 0.0005
+
+(2018-03-05): 
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			10
+n_attractor_iterations: 5,
+attractor_dynamics: 	projection2
+attractor_noise_level: 	0.2
+attractor_noise_type: 	gaussian
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	0.8774 	 0.0385
+saved_test_acc 		0.8498 	 0.0351
+TEST:[1.000 0.500 1.000 0.531 0.984 0.516 0.922 0.875 0.969 0.938 1.000 0.891
+ 0.922]
+TRAIN:[1.000 0.500 1.000 0.531 1.000 0.531 0.969 0.969 1.000 0.969 1.000 0.938
+ 1.000]
+(2018-03-05): 
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			10
+n_attractor_iterations: 5,
+attractor_dynamics: 	projection2
+attractor_noise_level: 	0.2
+attractor_noise_type: 	gaussian
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	0.8958 	 0.0354
+saved_test_acc 		0.8635 	 0.0339
+TEST:[1.000 0.500 1.000 0.531 0.984 0.516 0.922 0.875 0.969 0.938 1.000 0.891
+ 0.922 0.516 0.969 0.906 1.000 1.000 0.500 0.906 1.000 0.984 1.000 1.000
+ 0.891 0.469 1.000 0.938 0.859 0.922]
+TRAIN:[1.000 0.500 1.000 0.531 1.000 0.531 0.969 0.969 1.000 0.969 1.000 0.938
+ 1.000 0.531 1.000 1.000 1.000 1.000 0.500 1.000 1.000 1.000 1.000 1.000
+ 0.969 0.531 1.000 1.000 0.969 0.969]
+(2018-03-05): 
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			10
+n_attractor_iterations: 5,
+attractor_dynamics: 	projection3
+attractor_noise_level: 	0.2
+attractor_noise_type: 	gaussian
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	0.9625 	 0.0141
+saved_test_acc 		0.9495 	 0.0142
+saved_att_loss 		0.4796 	 0.0209
+TRAIN:[1.000 0.531 1.000 0.531 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000
+ 0.844 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000
+ 1.000 1.000 0.969 1.000 1.000 1.000]
+TEST:[1.000 0.516 0.984 0.594 1.000 1.000 1.000 1.000 0.984 1.000 1.000 1.000
+ 0.703 1.000 1.000 0.984 0.969 1.000 1.000 1.000 1.000 0.969 0.984 0.984
+ 0.984 0.984 0.922 1.000 0.984 0.938]
+ATT_LOSS:[0.274 0.144 0.320 0.229 0.622 0.643 0.640 0.577 0.369 0.516 0.441 0.513
+ 0.411 0.330 0.304 0.720 0.491 0.329 0.578 0.517 0.525 0.706 0.445 0.585
+ 0.556 0.434 0.552 0.361 0.632 0.624]
+(2018-03-06): 
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			10
+n_attractor_iterations: 5,
+attractor_dynamics: 	projection3
+attractor_noise_level: 	0.2
+attractor_noise_type: 	gaussian
+attractor_regu-n: 	(lambda:0.05)
+TRAIN/TEST_SIZE: 	1000/1000, SEQ_LEN: 12
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	0.7145 	 0.0323
+saved_test_acc 		0.6431 	 0.0380
+saved_att_loss 		0.5675 	 0.2207
+TRAIN:[1.000 0.569 0.619 0.987 0.753 0.943 0.563 0.589 0.880 0.658 0.544 0.556
+ 0.584 0.519 0.647 0.598 0.532 0.644 1.000 0.551 1.000 1.000 0.670 0.981
+ 1.000 0.672 0.553 0.605 0.664 0.554]
+TEST:[0.998 0.510 0.498 0.957 0.642 0.808 0.507 0.512 0.743 0.534 0.524 0.508
+ 0.575 0.489 0.576 0.513 0.502 0.518 0.931 0.522 1.000 1.000 0.495 0.933
+ 0.985 0.496 0.482 0.511 0.502 0.518]
+ATT_LOSS:[0.522 0.385 0.517 0.612 0.450 0.579 0.330 0.365 0.586 0.697 0.224 2.920
+ 0.194 0.169 0.396 0.615 0.196 0.656 0.731 0.339 0.512 0.570 0.652 0.569
+ 0.799 0.640 0.262 0.498 0.715 0.324]
+(2018-03-06): 
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			5
+n_attractor_iterations: 0,
+attractor_dynamics: 	projection3
+attractor_noise_level: 	0.2
+attractor_noise_type: 	gaussian
+attractor_regu-n: 	(lambda:0.05)
+TRAIN/TEST_SIZE: 	1000/1000, SEQ_LEN: 12
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	0.8356 	 0.0199
+saved_test_acc 		0.6535 	 0.0348
+saved_att_loss 		1.0000 	 0.0000
+TRAIN:[0.686 0.696 0.643 0.894 1.000 0.729 0.911 0.724 0.723 0.741 0.701 0.680
+ 0.693 0.997 1.000 0.961 1.000 0.645 0.759 0.704 1.000 0.736 0.901 0.997
+ 0.998 0.998 0.991 0.634 0.925 1.000]
+TEST:[0.522 0.474 0.493 0.615 0.999 0.475 0.566 0.512 0.499 0.512 0.493 0.517
+ 0.494 0.756 0.918 0.757 0.993 0.502 0.523 0.520 0.996 0.506 0.612 0.668
+ 0.910 0.635 0.842 0.489 0.822 0.987]
+ATT_LOSS:[1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000
+ 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000
+ 1.000 1.000 1.000 1.000 1.000 1.000]
+
+
+(2018-03-06): 
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			5
+n_attractor_iterations: 5,
+attractor_dynamics: 	projection3
+attractor_noise_level: 	0.2
+attractor_noise_type: 	bernoilli
+attractor_regu-n: 	l2(lambda:0.05)
+TRAIN/TEST_SIZE: 	1000/1000, SEQ_LEN: 12
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	0.8064 	 0.0319
+saved_test_acc 		0.7285 	 0.0438
+saved_att_loss 		0.7690 	 0.2380
+TRAIN:[0.556 0.963 1.000 1.000 0.594 1.000 0.637 0.886 0.847 0.583 0.671 0.746
+ 0.633 0.535 0.667 1.000 1.000 0.660 1.000 1.000 0.998 1.000 0.950 0.774
+ 1.000 0.623 0.538 0.719]
+TEST:[0.498 0.853 0.943 0.999 0.499 1.000 0.553 0.724 0.619 0.506 0.511 0.695
+ 0.503 0.493 0.519 0.998 0.999 0.534 0.965 1.000 0.953 0.997 0.820 0.614
+ 0.960 0.488 0.513 0.644]
+ATT_LOSS:[0.542 0.798 0.722 0.572 0.513 0.822 0.345 0.694 0.719 0.511 0.686 0.461
+ 0.699 3.085 0.771 0.497 0.748 0.659 0.656 0.799 0.822 0.554 0.820 0.707
+ 0.468 0.687 1.489 0.685]
+
+(2018-03-06): 
+<NETWORK>:
+model_type: 		GRU,
+hid: 			5, 
+h_hid: 			5
+n_attractor_iterations: 5,
+attractor_dynamics: 	projection3
+attractor_noise_level: 	0.2
+attractor_noise_type: 	bernoilli
+attractor_regu-n: 	(lambda:0.05)
+TRAIN/TEST_SIZE: 	1000/1000, SEQ_LEN: 12
+<RESULTS>:
+type: 			mean: 	 var: 	
+saved_train_acc 	0.7458 	 0.0286
+saved_test_acc 		0.6377 	 0.0339
+saved_att_loss 		0.6013 	 0.0245
+TRAIN:[0.608 0.792 0.591 1.000 0.601 1.000 0.720 0.974 1.000 0.594 0.637 0.701
+ 0.627 0.530 0.605 0.646 1.000 0.621 0.950 0.645 1.000 0.601 0.710]
+TEST:[0.512 0.627 0.470 0.893 0.545 0.977 0.595 0.712 0.943 0.495 0.489 0.534
+ 0.507 0.506 0.497 0.540 0.999 0.513 0.865 0.500 0.920 0.517 0.508]
+ATT_LOSS:[0.585 0.741 0.481 0.528 0.286 0.946 0.429 0.696 0.452 0.268 0.739 0.726
+ 0.695 0.619 0.583 0.530 0.643 0.701 0.602 0.667 0.579 0.494 0.840]
