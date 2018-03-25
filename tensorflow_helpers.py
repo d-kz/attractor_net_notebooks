@@ -25,42 +25,6 @@ def mozer_get_variable(vname, mat_dim):
     return var
 
 
-################ get_batches ############################################################
-def get_batches(num, data, labels):
-    '''
-    Return a total of `num` random samples and labels.
-    '''
-    idx = np.arange(0, len(data))
-    np.random.shuffle(idx)
-    batches = []
-    while len(idx) > 0:
-       cur_idx = idx[:min(num, len(idx))]
-
-       data_shuffle = [data[i] for i in cur_idx]
-       labels_shuffle = [labels[i] for i in cur_idx]
-       batches.append((np.asarray(data_shuffle), np.asarray(labels_shuffle)))
-       idx = idx[num:]
-    return batches
-
-def print_model_type(ops, N_TRAIN, N_TEST, SEQ_LEN):
-    print("""
-    model_type: \t\t{}, task: {}
-    hid: \t\t\t{},
-    h_hid: \t\t\t{}
-    n_attractor_iterations: {},
-    attractor_dynamics: \t{}
-    attractor_noise_level: \t{}
-    attractor_noise_type: \t{}
-    attractor_regu-n: \t{}(lambda:{})
-    TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(ops['model_type'], ops['problem_type'], ops['hid'], ops['h_hid'],
-                                                    ops['n_attractor_iterations'],
-                                                    ops['attractor_dynamics'], ops['attractor_noise_level'],
-                                                    ops['attractor_noise_type'],
-                                                    ops['attractor_regularization'],
-                                                    ops['attractor_regularization_lambda'],
-                                                    N_TRAIN, N_TEST, SEQ_LEN))
-
-
 
 #
 # ATTRACTOR NETWORK:
