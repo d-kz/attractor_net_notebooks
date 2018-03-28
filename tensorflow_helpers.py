@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-
+from helper_functions import get_batches
 
 
 #
@@ -24,6 +24,26 @@ def mozer_get_variable(vname, mat_dim):
         var = tf.get_variable(vname, initializer=val)
     return var
 
+
+def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
+    batches = get_batches(batch_size, X_data, Y_data)
+    collect_outputs = [[] for i in range(len(input_tensors))]
+    for (batch_x, batch_y) in batches:
+        outputs = sess.run(input_tensors, feed_dict={X: batch_x, Y: batch_y})
+        for i, output in enumerate(outputs):
+            collect_outputs[i].append(output)
+
+    # merge all
+    for i in range(len(input_tensors)):
+        output = np.array(collect_outputs[i])
+        # import pdb;pdb.set_trace()
+        if len(output[0].flatten()) > 1: # for actual tensor collections, merge batches
+            output = np.concatenate(output, axis=0)
+        else: # for just values, find the average
+            output = np.mean(output)
+        collect_outputs[i] = output
+
+    return collect_outputs
 
 
 #
@@ -208,9 +228,9 @@ def GRU(X, ops, params):
 
         if 'pos' in ops['problem_type']:
             # for efficiency's sake just do one matmul.
-            h_clean_seq = tf.transpose(h_clean_seq, [1,0,2]) # [seq_len, batch_size, n_hid] -> [batch_size, seq_len, n_hid]
-            h_clean_seq = tf.reshape(h_clean_seq, [-1, N_HIDDEN])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
-            out = tf.nn.sigmoid(tf.matmul(h_clean_seq, W['out']) + b['out'])
+            h_clean_seq_trans = tf.transpose(h_clean_seq, [1,0,2]) # [seq_len, batch_size, n_hid] -> [batch_size, seq_len, n_hid]
+            h_clean_seq_trans = tf.reshape(h_clean_seq_trans, [-1, N_HIDDEN])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
+            out = tf.nn.sigmoid(tf.matmul(h_clean_seq_trans, W['out']) + b['out'])
             out = tf.reshape(out, [batch_size, ops['seq_len'], ops['out']])
         else:
             out = tf.nn.sigmoid(tf.matmul(h_clean_seq[-1], W['out']) + b['out'])

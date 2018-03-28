@@ -71,15 +71,20 @@ def print_model_type(ops, N_TRAIN, N_TEST, SEQ_LEN):
 
 
 
-def translate_ids_to_words(x, y, id2word, id2tag, printout=False, log=False):
+def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=False):
     # prints translated sequences and logs them.
     words = [id2word[id] for id in x]
     tags = [id2tag[id] for id in y]
+    true_tags = [id2tag[id] for id in y_true]
 
     print_str = ''
     for i in range(len(x)):
         if words[i] != 'PAD':
-            print_str += "{}<{}>".format(words[i], tags[i])
+            if y[i] == y_true[i]: #print in green
+                print_str += "{}<\033[1;32m{}\x1b[0m> ".format(words[i], tags[i])
+            else: #print in red (green for correct answer)
+                ""
+                print_str += "{}<\x1b[31m{}\x1b[0m(\033[1;32m{}\x1b[0m)> ".format(words[i], tags[i], true_tags[i])
     if printout:
         print(print_str)
     # TODO: logging
