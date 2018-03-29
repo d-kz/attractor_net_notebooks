@@ -103,7 +103,7 @@ def get_pos_brown_dataset(directory, partition):
         dataset = pickle.load(handle)
         dataset_X, dataset_Y = np.array(dataset['X']), np.array(dataset['Y'])
 
-    map_names = ['id2tag', "tag2id", "id2word", "word2id"]
+    map_names = ['id2tag', "tag2id", "id2word", "word2id", "id2prior"]
     maps = {map_name: [] for map_name in map_names}
     for map_name in map_names:
         with open(directory + "/" + map_name + '.pickle', 'rb') as handle:
@@ -150,7 +150,13 @@ def pick_task(task_name, ops):
         with open("data/corpus_brown/data_params.pickle", 'rb') as handle:
             dataset_params = pickle.load(handle)
         SEQ_LEN = dataset_params['seq_len_max'] #length 50 cutoff preserves 98% of data
-        N_INPUT = 50 # embedding vector size
+        if ops['input_type'] == 'embed':
+            N_INPUT = ops['embedding_size'] # embedding vector size
+        elif ops['input_type'] == 'prior':
+            N_INPUT = 147
+        elif ops['input_type'] == 'embed&prior':
+            N_INPUT = 147 + ops['embedding_size']
+
         N_CLASSES = dataset_params['n_classes'] # tags size
         total_examples = dataset_params['total_examples'] # total sequences
         N_TEST = int(total_examples*ops['test_partition'])

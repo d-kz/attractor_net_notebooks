@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def load_pretrained_embeddings(embedding_path, maps, N_INPUT):
+def load_pretrained_embeddings(embedding_path, maps, ops):
     # load embeddigns
     print("Loading embeddings...")
     f = open(embedding_path, 'r')
@@ -17,7 +17,7 @@ def load_pretrained_embeddings(embedding_path, maps, N_INPUT):
     words_not_found = []
     unique_words_in_data = len(maps['id2word'])
 
-    embeddings = np.random.uniform(low=-1.0, high=1.0, size=[unique_words_in_data, N_INPUT]).astype("float32")
+    embeddings = np.random.uniform(low=-1.0, high=1.0, size=[unique_words_in_data, ops['embedding_size']]).astype("float32")
     for id, word in maps['id2word'].items():
         if word in pretrained_emb:
             embeddings[id] = pretrained_emb[word]
@@ -89,3 +89,6 @@ def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=Fa
         print(print_str)
     # TODO: logging
     return print_str
+
+
+
