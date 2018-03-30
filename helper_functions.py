@@ -1,4 +1,6 @@
 import numpy as np
+import datetime
+
 
 
 def load_pretrained_embeddings(embedding_path, maps, ops):
@@ -76,7 +78,6 @@ def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=Fa
     words = [id2word[id] for id in x]
     tags = [id2tag[id] for id in y]
     true_tags = [id2tag[id] for id in y_true]
-
     print_str = ''
     for i in range(len(x)):
         if words[i] != 'PAD':
@@ -90,5 +91,44 @@ def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=Fa
     # TODO: logging
     return print_str
 
+def save_results(ops, saved_train_acc, saved_test_acc, saved_att_loss, N_TRAIN, N_TEST, SEQ_LEN, comment):
+    saved_train_acc = np.array(saved_train_acc)
+    saved_test_acc = np.array(saved_test_acc)
+    saved_att_loss = np.array(saved_att_loss)
+    np.set_printoptions(precision=3)
+    results = "\n<RESULTS>:\ntype: \t\t\tmean: \t var: \t\n"
+    results += "{} \t{:.4f} \t {:.4f}\n".format("saved_train_acc", np.mean(saved_train_acc),
+                                                np.var(saved_train_acc))
+    results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_test_acc", np.mean(saved_test_acc), np.var(saved_test_acc))
+    results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
+
+    results += "TRAIN:" + np.array2string(saved_train_acc, formatter={'float_kind': lambda x: "%.3f" % x})
+    results += "\nTEST:" + np.array2string(saved_test_acc, formatter={'float_kind': lambda x: "%.3f" % x})
+    results += "\nATT_LOSS:" + np.array2string(saved_att_loss, formatter={'float_kind': lambda x: "%.3f" % x})
+    #         results += "{} \t {:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
 
 
+    title = "../attractor_net_notebooks/experiments/results/{}.txt".format(ops['problem_type'])
+    text = """\n
+({}): {}
+<NETWORK>:
+model_type: \t\t{},
+hid: \t\t\t{},
+h_hid: \t\t\t{}
+n_attractor_iterations: {},
+attractor_dynamics: \t{}
+attractor_noise_level: \t{}
+attractor_noise_type: \t{}
+attractor_regu-n: \t{}(lambda:{})
+TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(datetime.date.today(), comment, ops['model_type'], ops['hid'],
+                                            ops['h_hid'], ops['n_attractor_iterations'],
+                                            ops['attractor_dynamics'], ops['attractor_noise_level'],
+                                            ops['attractor_noise_type'],
+                                            ops['attractor_regularization'], ops['attractor_regularization_lambda'],
+                                            N_TRAIN, N_TEST, SEQ_LEN)
+
+    text += results
+    print(text)
+    with open(title, "a") as myfile:
+        myfile.write(text)
+        print("Saved Results Successfully")

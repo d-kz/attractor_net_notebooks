@@ -98,18 +98,18 @@ def run_attractor_net(input_bias, attr_net, ops):
 
 ############### ATTRACTOR NET LOSS FUNCTION #####################################
 
-def attractor_net_loss_function(attractor_tgt_net, attr_net, ops):
+def attractor_net_loss_function(attractor_tgt_net, attr_net, regularization_strength, noise_level_added, ops):
     # attractor_tgt_net has dimensions #examples X #hidden
     #                   where the target value is tanh(attractor_tgt_net)
 
     # clean-up for attractor net training
     if (ops['attractor_noise_level'] >= 0.0):  # Gaussian mean-zero noise
-        input_bias = attractor_tgt_net + ops['attractor_noise_level'] \
+        input_bias = attractor_tgt_net + noise_level_added \
                                          * tf.random_normal(tf.shape(attractor_tgt_net))
     else:  # Bernoulli dropout
         input_bias = attractor_tgt_net * \
                      tf.cast((tf.random_uniform(tf.shape(attractor_tgt_net)) \
-                              >= -ops['attractor_noise_level']), tf.float32)
+                              >= -noise_level_added), tf.float32)
 
     a_cleaned, _ = run_attractor_net(input_bias, attr_net, ops)
 
@@ -120,19 +120,16 @@ def attractor_net_loss_function(attractor_tgt_net, attr_net, ops):
 
     if ops['attractor_regularization'] == 'l2':
         print("L2 Regularization")
-        attr_loss += ops['attractor_regularization_lambda'] * tf.norm(attr_net['W'], ord=2)
+        attr_loss += regularization_strength * tf.norm(attr_net['W'], ord=2)
 
     return attr_loss, input_bias
 
 
-def attractor_net_init(ops):
+def attractor_net_init(N_HIDDEN, ATTRACTOR_TYPE, N_H_HIDDEN):
     # attr net weights
     # NOTE: i tried setting attractor_W = attractor_b = 0 and attractor_scale=1.0
     # which is the default "no attractor" model, but that doesn't learn as well as
 
-    ATTRACTOR_TYPE = ops['attractor_dynamics']
-    N_HIDDEN = ops['hid']
-    N_H_HIDDEN = ops['h_hid']
     with tf.variable_scope("ATTRACTOR_WEIGHTS"):
         attr_net = {}
         if ATTRACTOR_TYPE == 'projection2' or ATTRACTOR_TYPE == "projection3":  # attractor net 2
