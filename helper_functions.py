@@ -91,20 +91,26 @@ def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=Fa
     # TODO: logging
     return print_str
 
-def save_results(ops, saved_train_acc, saved_test_acc, saved_att_loss, N_TRAIN, N_TEST, SEQ_LEN, comment):
+def save_results(ops, saved_train_acc, saved_test_acc, saved_att_loss, saved_entropy_final, N_TRAIN, N_TEST, SEQ_LEN, comment):
     saved_train_acc = np.array(saved_train_acc)
     saved_test_acc = np.array(saved_test_acc)
     saved_att_loss = np.array(saved_att_loss)
+    saved_entropy_final = np.array(saved_entropy_final)
+
     np.set_printoptions(precision=3)
     results = "\n<RESULTS>:\ntype: \t\t\tmean: \t var: \t\n"
     results += "{} \t{:.4f} \t {:.4f}\n".format("saved_train_acc", np.mean(saved_train_acc),
                                                 np.var(saved_train_acc))
     results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_test_acc", np.mean(saved_test_acc), np.var(saved_test_acc))
     results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
+    results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_entropy_final", np.mean(saved_entropy_final), np.var(saved_entropy_final))
+
 
     results += "TRAIN:" + np.array2string(saved_train_acc, formatter={'float_kind': lambda x: "%.3f" % x})
     results += "\nTEST:" + np.array2string(saved_test_acc, formatter={'float_kind': lambda x: "%.3f" % x})
     results += "\nATT_LOSS:" + np.array2string(saved_att_loss, formatter={'float_kind': lambda x: "%.3f" % x})
+    results += "\nENTROPY:" + np.array2string(saved_entropy_final, formatter={'float_kind': lambda x: "%.3f" % x})
+
     #         results += "{} \t {:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
 
 
