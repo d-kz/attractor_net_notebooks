@@ -1,5 +1,10 @@
 import pickle
 import datetime
+import scipy as sc
+import numpy as np
+from sklearn.metrics.cluster import mutual_info_score
+
+
 
 class MutInfSaver():
     def __init__(self):
@@ -102,4 +107,80 @@ class WeightSaver():
             self.bias_history = element_map["bias_history"]
             
         return element_map
-    
+
+
+def compute_entropy_fullvec(h_final, ops, n_bins=10):
+    if h_final == []:
+        return 0.0  # for matching a space between new runs
+
+    h_flat = h_final.reshape(-1, ops['hid'])
+    # put values into bins
+    bins = np.array([-1.0 + 2.0 * i / n_bins for i in range(n_bins + 1)])
+    h_digitized = np.digitize(h_flat, bins)
+    # compute probability for each bin
+    neuron_distn = h_digitized
+    # axis=0 will compute unique vectors instead of by element
+    _, pdf = np.unique(neuron_distn, return_counts=True, axis=0)  # returns sorted by unique value
+    neurons_entropy = sc.stats.entropy(pdf)
+    return neurons_entropy
+
+
+def get_mut_inf_for_vecs(A, B, n_bins=10):
+    """
+    return the average mut_inf between all neuron pairs of 2 vectors given
+    """
+    m = A.shape[1]
+    n = B.shape[1]
+    bins = np.array([-1.0 + 2.0 * i / n_bins for i in range(n_bins + 1)])
+    A_digitized = np.digitize(A, bins)
+    B_digitized = np.digitize(B, bins)
+
+    total_mut_inf = 0.0
+    for i in range(m):
+        for j in range(n):
+            #             print(A[i], A_digitized[i])
+            #             print(mutual_info_score(A_digitized[i], B_digitized[j]))
+            total_mut_inf += mutual_info_score(A_digitized[:, i], B_digitized[:, j])
+    return total_mut_inf / (m * n)
+
+
+def flat_mutual_inf(h_init, h_atts, h_final, ops):
+    """
+    returns an array of of mutual information values between initial hidden vector
+    and all consecutive attractor state vectors
+    - each "distribution" of a neuron is an observation for one sequence
+    """
+    if h_init == []:
+        return []  # for matching a space between new runs
+    # flatten over the sequence & batches
+    H_target = h_init.reshape(-1, ops['hid'])
+    Hs = [H_target]
+    for h_att in h_atts:
+        Hs.append(h_att.reshape(-1, ops['h_hid']))
+    Hs.append(h_final.reshape(-1, ops['hid']))
+
+    mut_infs = []
+    for H in Hs:
+        mut_inf = get_mut_inf_for_vecs(H_target, H)
+        mut_infs.append(mut_inf)
+    return mut_infs
+
+
+def compute_avg_entropy_vec(h_final, ops, n_bins=10):
+    if h_final == []:
+        return 0.0  # for matching a space between new runs
+
+    h_flat = h_final.reshape(-1, ops['hid'])
+
+    # put values into bins
+    bins = np.array([-1.0 + 2.0 * i / n_bins for i in range(n_bins + 1)])
+    h_digitized = np.digitize(h_flat, bins)
+    # compute probability for each bin
+    neurons_entropy = []
+    for neuron_i in range(h_digitized.shape[1]):
+        neuron_distn = h_digitized[:, neuron_i]
+        #         pdf = np.bincount(neuron_distn)/len(neuron_distn)
+        _, pdf = np.unique(neuron_distn, return_counts=True)  # returns sorted by unique value
+        neurons_entropy.append(sc.stats.entropy(pdf))
+    return np.average(neurons_entropy)
+

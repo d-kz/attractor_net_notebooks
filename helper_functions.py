@@ -50,8 +50,8 @@ def get_batches(num, data, labels):
 # def get_model_title():
 
 
-def print_model_type(ops, N_TRAIN, N_TEST, SEQ_LEN):
-    print("""
+def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
+    comment = """
     model_type: \t\t{}, task: {}
     hid: \t\t\t{},
     h_hid: \t\t\t{}
@@ -68,7 +68,9 @@ def print_model_type(ops, N_TRAIN, N_TEST, SEQ_LEN):
                                                     ops['attractor_regularization'],
                                                     ops['attractor_regularization_lambda'],
                                                     ops['train_word_embeddings'],
-                                                    N_TRAIN, N_TEST, SEQ_LEN))
+                                                    N_TRAIN, N_TEST, SEQ_LEN)
+
+    return comment
 
 
 
@@ -138,3 +140,9 @@ TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(datetime.date.today(), comment, 
     with open(title, "a") as myfile:
         myfile.write(text)
         print("Saved Results Successfully")
+
+def print_into_log(log_dir, comment):
+    with open(log_dir, "a") as myfile:
+        myfile.write(comment)
+        print("Logged Successfully: ")
+        print(comment)
