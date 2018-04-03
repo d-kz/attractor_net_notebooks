@@ -45,6 +45,7 @@ class WeightSaver():
         self.bias_history = []
         self.scaling_const_history = []
         self.bias_lambda_history = []
+        self.entropies = []
         
         self.directory = "experiments/weight_pickles/"
     
@@ -62,11 +63,12 @@ class WeightSaver():
         self.h_history.append(h_seq)
         
         
-    def update_conservative(self, epoch_number, loss_att, loss_task, acc):
+    def update_conservative(self, epoch_number, loss_att, loss_task, acc, entropy):
         self.epoch_number_history.append(epoch_number)
         self.losses_att.append(loss_att)
         self.losses_task.append(loss_task)
         self.acc_history.append(acc)
+        self.entropies.append(entropy)
 
     def get_hashmap_format(self):
         hashmap = {

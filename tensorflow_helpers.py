@@ -86,8 +86,9 @@ def task_accuracy(Y, Y_, ops):
 
 
 def project_init(in_size, out_size):
-    b_out = mozer_get_variable("b_out", [out_size])
-    W_out = mozer_get_variable("W_out", [in_size, out_size])
+    with tf.variable_scope("TASK_WEIGHTS"):
+        b_out = mozer_get_variable("b_out", [out_size])
+        W_out = mozer_get_variable("W_out", [in_size, out_size])
     return W_out, b_out
 
 def project_into_output(Y, output, in_size, out_size, ops):
@@ -98,9 +99,9 @@ def project_into_output(Y, output, in_size, out_size, ops):
         # for efficiency's sake just do one matmul.
         output_trans = tf.transpose(output, [1, 0, 2])  # [seq_len, batch_size, n_hid] -> [batch_size, seq_len, n_hid]
         output_trans = tf.reshape(output_trans,
-                                  [-1, ops['hid']])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
+                                  [-1, in_size])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
         out = tf.nn.sigmoid(tf.matmul(output_trans, W_out) + b_out)
-        Y_ = tf.reshape(out, [batch_size, ops['seq_len'], ops['out']])
+        Y_ = tf.reshape(out, [batch_size, ops['seq_len'], out_size])
     else:
         Y_ = tf.nn.sigmoid(tf.matmul(output[-1], W_out) + b_out)
     return Y_
@@ -189,59 +190,61 @@ def attractor_net_loss_function(attractor_tgt_net, attr_net, regularization_stre
     return attr_loss, input_bias
 
 
-def attractor_net_init(N_HIDDEN, ATTRACTOR_TYPE, N_H_HIDDEN):
+def attractor_net_init(N_HIDDEN, ATTRACTOR_TYPE, N_H_HIDDEN, suffix=''):
     # attr net weights
     # NOTE: i tried setting attractor_W = attractor_b = 0 and attractor_scale=1.0
     # which is the default "no attractor" model, but that doesn't learn as well as
 
     with tf.variable_scope("ATTRACTOR_WEIGHTS"):
-        attr_net = {}
-        if ATTRACTOR_TYPE == 'projection2' or ATTRACTOR_TYPE == "projection3":  # attractor net 2
-            attr_net['W_in'] = tf.get_variable("attractor_W_in", initializer=tf.eye(N_HIDDEN, num_columns=N_H_HIDDEN) +
-                                                                             .01 * tf.random_normal(
-                                                                                 [N_HIDDEN, N_H_HIDDEN]))
-            attr_net['W_out'] = tf.get_variable("attractor_Wout", initializer=tf.eye(N_H_HIDDEN, num_columns=N_HIDDEN) +
-                                                                              .01 * tf.random_normal(
-                                                                                  [N_H_HIDDEN, N_HIDDEN]))
-            attr_net['b_out'] = mozer_get_variable("attractor_b_out", [N_HIDDEN])
-            attr_net['W'] = tf.get_variable("attractor_W", initializer=.01 * tf.random_normal([N_H_HIDDEN, N_H_HIDDEN]))
-            attr_net['b'] = tf.get_variable("attractor_b", initializer=.01 * tf.random_normal([N_H_HIDDEN]))
-        else:
-            attr_net = {
-                'W': tf.get_variable("attractor_W", initializer=.01 * tf.random_normal([N_HIDDEN, N_HIDDEN])),
-                'b': tf.get_variable("attractor_b", initializer=.01 * tf.random_normal([N_HIDDEN]))
-            }
-        attr_net['scale'] = tf.get_variable("attractor_scale", initializer=.01 * tf.ones([1]))
+        with tf.variable_scope(suffix):
+            attr_net = {}
+            if ATTRACTOR_TYPE == 'projection2' or ATTRACTOR_TYPE == "projection3":  # attractor net 2
+                attr_net['W_in'] = tf.get_variable("attractor_W_in", initializer=tf.eye(N_HIDDEN, num_columns=N_H_HIDDEN) +
+                                                                                 .01 * tf.random_normal(
+                                                                                     [N_HIDDEN, N_H_HIDDEN]))
+                attr_net['W_out'] = tf.get_variable("attractor_Wout", initializer=tf.eye(N_H_HIDDEN, num_columns=N_HIDDEN) +
+                                                                                  .01 * tf.random_normal(
+                                                                                      [N_H_HIDDEN, N_HIDDEN]))
+                attr_net['b_out'] = mozer_get_variable("attractor_b_out", [N_HIDDEN])
+                attr_net['W'] = tf.get_variable("attractor_W", initializer=.01 * tf.random_normal([N_H_HIDDEN, N_H_HIDDEN]))
+                attr_net['b'] = tf.get_variable("attractor_b", initializer=.01 * tf.random_normal([N_H_HIDDEN]))
+            else:
+                attr_net = {
+                    'W': tf.get_variable("attractor_W", initializer=.01 * tf.random_normal([N_HIDDEN, N_HIDDEN])),
+                    'b': tf.get_variable("attractor_b", initializer=.01 * tf.random_normal([N_HIDDEN]))
+                }
+            attr_net['scale'] = tf.get_variable("attractor_scale", initializer=.01 * tf.ones([1]))
+    with tf.variable_scope(suffix):
+        # if ATTR_WEIGHT_CONSTRAINTS:  # symmetric + nonnegative diagonal weight matrix
+        Wdiag = tf.matrix_band_part(attr_net['W'], 0, 0)  # diagonal
+        Wlowdiag = tf.matrix_band_part(attr_net['W'], -1, 0) - Wdiag  # lower diagonal
+        # the normalization will happen here automatically since we defined it as a TF op
+        attr_net['Wconstr'] = Wlowdiag + tf.transpose(Wlowdiag) + tf.abs(Wdiag)
+        # attr_net['Wconstr'] = .5 * (attr_net['W'] + tf.transpose(attr_net['W'])) * \
+        #                      (1.0-tf.eye(N_HIDDEN)) + tf.abs(tf.matrix_band_part(attr_net['W'],0,0))
 
-    # if ATTR_WEIGHT_CONSTRAINTS:  # symmetric + nonnegative diagonal weight matrix
-    Wdiag = tf.matrix_band_part(attr_net['W'], 0, 0)  # diagonal
-    Wlowdiag = tf.matrix_band_part(attr_net['W'], -1, 0) - Wdiag  # lower diagonal
-    # the normalization will happen here automatically since we defined it as a TF op
-    attr_net['Wconstr'] = Wlowdiag + tf.transpose(Wlowdiag) + tf.abs(Wdiag)
-    # attr_net['Wconstr'] = .5 * (attr_net['W'] + tf.transpose(attr_net['W'])) * \
-    #                      (1.0-tf.eye(N_HIDDEN)) + tf.abs(tf.matrix_band_part(attr_net['W'],0,0))
-
-    # else:
-    #     attr_net['Wconstr'] = attr_net['W']
+        # else:
+        #     attr_net['Wconstr'] = attr_net['W']
     return attr_net
 
 #
 # GRU
 #
 ############### GRU ###############################################################
-def GRU_params_init(ops):
+def GRU_params_init(ops, suffix=''):
     N_INPUT = ops['in']
     N_HIDDEN = ops['hid']
     # N_CLASSES = ops['out']
     with tf.variable_scope("TASK_WEIGHTS"):
-        W = {#'out': mozer_get_variable("W_out", [N_HIDDEN, N_CLASSES]),
-             'in_stack': mozer_get_variable("W_in_stack", [N_INPUT, 3*N_HIDDEN]),
-             'rec_stack': mozer_get_variable("W_rec_stack", [N_HIDDEN,3*N_HIDDEN]),
-            }
+        with tf.variable_scope(suffix):
+            W = {#'out': mozer_get_variable("W_out", [N_HIDDEN, N_CLASSES]),
+                 'in_stack': mozer_get_variable("W_in_stack", [N_INPUT, 3*N_HIDDEN]),
+                 'rec_stack': mozer_get_variable("W_rec_stack", [N_HIDDEN,3*N_HIDDEN]),
+                }
 
-        b = {#'out': mozer_get_variable("b_out", [N_CLASSES]),
-             'stack': mozer_get_variable("b_stack", [3 * N_HIDDEN]),
-            }
+            b = {#'out': mozer_get_variable("b_out", [N_CLASSES]),
+                 'stack': mozer_get_variable("b_stack", [3 * N_HIDDEN]),
+                }
 
     params = {
         'W': W,

@@ -75,10 +75,10 @@ def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
 def get_training_progress_comment(epoch, ploss, aloss, train_acc, test_acc, entropy):
     progress_comment = "epoch " + str(epoch - 1) + ", Loss Pred " + \
                        "{:.4f}".format(ploss) + ", Loss Att " + \
-                       "{:.4f}".format(aloss) + ", Train Acc= " + \
+                       "{}".format(aloss) + ", Train Acc= " + \
                        "{:.3f}".format(train_acc) + ", Test Acc= " + \
                        "{:.4f}".format(test_acc) + ", Entropy= " + \
-                       "{:.4f}".format(entropy)
+                       "{}".format(entropy)
     return progress_comment
 
 #################
@@ -91,7 +91,7 @@ def print_some_translated_sentences(sess, output, X, X_train, Y_train, maps, ops
     Y_pred = np.argmax(Y_pred, axis=2)
     print(random_ids)
     for i, id in enumerate(random_ids):
-        translate_ids_to_words(X_train[id], Y_pred[i], Y_train[id], maps['id2word'], maps['id2tag'],
+        translate_ids_to_words(X_train[id], Y_pred[:,i], Y_train[id], maps['id2word'], maps['id2tag'],
                                printout=True)
     print('\n')
 

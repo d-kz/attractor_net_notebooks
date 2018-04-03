@@ -7,21 +7,21 @@ import tensorflow as tf
 
 
 class GRU_attractor(object):
-    def __init__(self, ops, inputs, direction='forward'):
+    def __init__(self, ops, inputs, direction='forward', suffix=''):
         if direction == 'forward':
             X, Y, attractor_tgt_net = inputs['X'], inputs['Y'], inputs['attractor_tgt_net'] # tensor inputs
         elif direction == 'backward':
             # Input is always expected as X = tf.placeholder("float", [None, SEQ_LEN, N_INPUT])
             #                             Y = tf.placeholder("float", [None, N_CLASSES=1]), OR [None, SEQ_LEN])
             # attractor_tgt_net is produced by the network itself, so we don't reverse it.
-            X, Y, attractor_tgt_net = tf.reverse(inputs['X'], axis=1), tf.reverse(inputs['Y'], axis=1), \
+            X, Y, attractor_tgt_net = tf.reverse(inputs['X'], axis=[1]), tf.reverse(inputs['Y'], axis=[1]), \
                                       inputs['attractor_tgt_net']  # tensor inputs
 
         #
         # GRAPH structuring
         #
-        params = GRU_params_init(ops)
-        attr_net = attractor_net_init(ops['hid'], ops['attractor_dynamics'], ops['h_hid'])
+        params = GRU_params_init(ops, suffix)
+        attr_net = attractor_net_init(ops['hid'], ops['attractor_dynamics'], ops['h_hid'], suffix)
         params['attr_net'] = attr_net
 
         #
@@ -55,9 +55,6 @@ class GRU_attractor(object):
                                                                ops['attractor_regularization_lambda'],
                                                                ops['attractor_noise_level'], ops)
 
-        prediction_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "TASK_WEIGHTS")
-        if ops['training_mode'] == 'attractor_on_both':
-            prediction_parameters += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS")
         attr_net_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS")
 
 
@@ -72,8 +69,6 @@ class GRU_attractor(object):
 
         self.attr_loss_op = attr_loss_op
         self.attr_train_op = attr_train_op
-
-        self.pred_tensors = prediction_parameters
 
         self.h_clean_seq_flat = h_clean_seq
         self.h_net_seq_flat = h_net_seq # pure cell ouptut (before attractor was applied)
