@@ -118,8 +118,11 @@ def attractor_net_loss_function(attractor_tgt_net, attr_net, regularization_stre
     attr_loss = tf.reduce_mean(tf.pow(attr_tgt - a_cleaned, 2)) / \
                 tf.reduce_mean(tf.pow(attr_tgt - tf.tanh(input_bias), 2))
 
-    if ops['attractor_regularization'] == 'l2':
-        print("L2 Regularization")
+    if ops['attractor_regularization'] == 'l2_regularization':
+        print("L2 reg-n")
+        attr_loss += regularization_strength * tf.nn.l2_loss(attr_net['W'])
+    elif ops['attractor_regularization'] == 'l2_norm':
+        print("L2 norm")
         attr_loss += regularization_strength * tf.norm(attr_net['W'], ord=2)
 
     return attr_loss, input_bias
