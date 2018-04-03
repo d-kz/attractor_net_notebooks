@@ -72,7 +72,28 @@ def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
 
     return comment
 
+def get_training_progress_comment(epoch, ploss, aloss, train_acc, test_acc, entropy):
+    progress_comment = "epoch " + str(epoch - 1) + ", Loss Pred " + \
+                       "{:.4f}".format(ploss) + ", Loss Att " + \
+                       "{:.4f}".format(aloss) + ", Train Acc= " + \
+                       "{:.3f}".format(train_acc) + ", Test Acc= " + \
+                       "{:.4f}".format(test_acc) + ", Entropy= " + \
+                       "{:.4f}".format(entropy)
+    return progress_comment
 
+#################
+def print_some_translated_sentences(sess, output, X, X_train, Y_train, maps, ops, n_rand_sentences=1):
+    """
+    Only relevant for NLP tasks
+    """""
+    random_ids = np.random.choice(ops['vocab_size'], n_rand_sentences, replace=False)
+    Y_pred = sess.run(output, feed_dict={X: X_train[random_ids]})
+    Y_pred = np.argmax(Y_pred, axis=2)
+    print(random_ids)
+    for i, id in enumerate(random_ids):
+        translate_ids_to_words(X_train[id], Y_pred[i], Y_train[id], maps['id2word'], maps['id2tag'],
+                               printout=True)
+    print('\n')
 
 
 def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=False):
@@ -93,6 +114,9 @@ def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=Fa
     # TODO: logging
     return print_str
 
+
+
+##################
 def save_results(ops, saved_train_acc, saved_test_acc, saved_att_loss, saved_entropy_final, N_TRAIN, N_TEST, SEQ_LEN, comment):
     saved_train_acc = np.array(saved_train_acc)
     saved_test_acc = np.array(saved_test_acc)
@@ -136,7 +160,7 @@ TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(datetime.date.today(), comment, 
                                             N_TRAIN, N_TEST, SEQ_LEN)
 
     text += results
-    print(text)
+    print_into_log(text)
     with open(title, "a") as myfile:
         myfile.write(text)
         print("Saved Results Successfully")

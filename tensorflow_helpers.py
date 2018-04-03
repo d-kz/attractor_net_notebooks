@@ -46,6 +46,65 @@ def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
     return collect_outputs
 
 
+
+#
+# GRAPH HELPER FUNCTIONS
+#
+######################################################################################
+def task_loss(Y, Y_, ops):
+    if 'pos' in ops['problem_type']:# cross entropy loss for sequence tagging
+        # Y_: (batch_size, seq_len, n_classes), Y: (batch, seq_len)
+        fake_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=Y_, labels=Y)
+        #     collapsed_class_Y = tf.reduce_max(Y, axis=2)
+        mask = tf.cast(tf.sign(Y), dtype=tf.float32)
+        loss_per_example_per_step = fake_loss*mask #since we only care about information with the real class
+        loss_per_example_sum = tf.reduce_sum(loss_per_example_per_step, reduction_indices=[1])
+        loss_per_example_average = loss_per_example_sum/tf.reduce_sum(mask, axis=[1])
+        pred_loss_op = tf.reduce_mean(loss_per_example_average, name="loss")
+    else: # MSE for singular output
+        pred_loss_op = tf.reduce_mean(tf.pow(Y_ - Y, 2) / .25)
+    return pred_loss_op
+
+def task_accuracy(Y, Y_, ops):
+    """
+    :param Y: [batch_size, length OR output=1]
+    :param Y_: prediction [batch_size, length, classes_logits]
+    :param ops: model params
+    :return: accuracy tensor operation
+    """
+    if 'pos' in ops['problem_type']:  # apply mask, average by element nonmasekd
+        mask = tf.cast(tf.sign(Y), dtype=tf.float32)
+        id_predicted = tf.argmax(tf.nn.softmax(Y_), axis=2)
+        fake_accuracy = tf.cast(tf.equal(id_predicted, Y), dtype=tf.float32)
+        accuracy_masked = fake_accuracy * mask
+        accuracy_per_example = tf.reduce_sum(accuracy_masked, 1) / tf.reduce_sum(mask, axis=[1])
+        accuracy = tf.reduce_mean(accuracy_per_example, name="valid_accuracy")
+    else:
+        correct_pred = tf.equal(tf.round(Y_), Y)
+        accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+    return accuracy
+
+
+def project_init(in_size, out_size):
+    b_out = mozer_get_variable("b_out", [out_size])
+    W_out = mozer_get_variable("W_out", [in_size, out_size])
+    return W_out, b_out
+
+def project_into_output(Y, output, in_size, out_size, ops):
+    W_out, b_out = project_init(in_size, out_size)
+
+    batch_size = tf.shape(Y)[0]
+    if 'pos' in ops['problem_type']:
+        # for efficiency's sake just do one matmul.
+        output_trans = tf.transpose(output, [1, 0, 2])  # [seq_len, batch_size, n_hid] -> [batch_size, seq_len, n_hid]
+        output_trans = tf.reshape(output_trans,
+                                  [-1, ops['hid']])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
+        out = tf.nn.sigmoid(tf.matmul(output_trans, W_out) + b_out)
+        Y_ = tf.reshape(out, [batch_size, ops['seq_len'], ops['out']])
+    else:
+        Y_ = tf.nn.sigmoid(tf.matmul(output[-1], W_out) + b_out)
+    return Y_
+
 #
 # ATTRACTOR NETWORK:
 #
@@ -124,6 +183,8 @@ def attractor_net_loss_function(attractor_tgt_net, attr_net, regularization_stre
     elif ops['attractor_regularization'] == 'l2_norm':
         print("L2 norm")
         attr_loss += regularization_strength * tf.norm(attr_net['W'], ord=2)
+    else:
+        print("No Regularization")
 
     return attr_loss, input_bias
 
@@ -164,21 +225,21 @@ def attractor_net_init(N_HIDDEN, ATTRACTOR_TYPE, N_H_HIDDEN):
     #     attr_net['Wconstr'] = attr_net['W']
     return attr_net
 
-    #
+#
 # GRU
 #
 ############### GRU ###############################################################
 def GRU_params_init(ops):
     N_INPUT = ops['in']
     N_HIDDEN = ops['hid']
-    N_CLASSES = ops['out']
+    # N_CLASSES = ops['out']
     with tf.variable_scope("TASK_WEIGHTS"):
-        W = {'out': mozer_get_variable("W_out", [N_HIDDEN, N_CLASSES]),
+        W = {#'out': mozer_get_variable("W_out", [N_HIDDEN, N_CLASSES]),
              'in_stack': mozer_get_variable("W_in_stack", [N_INPUT, 3*N_HIDDEN]),
              'rec_stack': mozer_get_variable("W_rec_stack", [N_HIDDEN,3*N_HIDDEN]),
             }
 
-        b = {'out': mozer_get_variable("b_out", [N_CLASSES]),
+        b = {#'out': mozer_get_variable("b_out", [N_CLASSES]),
              'stack': mozer_get_variable("b_stack", [3 * N_HIDDEN]),
             }
 
@@ -226,13 +287,16 @@ def GRU(X, ops, params):
                                 [tf.zeros([batch_size, ops['h_hid']], tf.float32) for i in range(ops['n_attractor_iterations'])] ],
                                   name='GRU/scan')
 
-        if 'pos' in ops['problem_type']:
-            # for efficiency's sake just do one matmul.
-            h_clean_seq_trans = tf.transpose(h_clean_seq, [1,0,2]) # [seq_len, batch_size, n_hid] -> [batch_size, seq_len, n_hid]
-            h_clean_seq_trans = tf.reshape(h_clean_seq_trans, [-1, N_HIDDEN])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
-            out = tf.nn.sigmoid(tf.matmul(h_clean_seq_trans, W['out']) + b['out'])
-            out = tf.reshape(out, [batch_size, ops['seq_len'], ops['out']])
-        else:
-            out = tf.nn.sigmoid(tf.matmul(h_clean_seq[-1], W['out']) + b['out'])
-        return [out, h_net_seq, h_attractor_collection, h_clean_seq]
+
+        # if 'pos' in ops['problem_type']:
+        #     # for efficiency's sake just do one matmul.
+        #     h_clean_seq_trans = tf.transpose(h_clean_seq, [1,0,2]) # [seq_len, batch_size, n_hid] -> [batch_size, seq_len, n_hid]
+        #     h_clean_seq_trans = tf.reshape(h_clean_seq_trans, [-1, N_HIDDEN])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
+        #     out = tf.nn.sigmoid(tf.matmul(h_clean_seq_trans, W['out']) + b['out'])
+        #     out = tf.reshape(out, [batch_size, ops['seq_len'], ops['out']])
+        # else:
+        #     out = tf.nn.sigmoid(tf.matmul(h_clean_seq[-1], W['out']) + b['out'])
+        # h_clean_seq - true output of the cell
+        # h_net_seq - output before attractor is applied
+        return [h_net_seq, h_attractor_collection, h_clean_seq]
 
