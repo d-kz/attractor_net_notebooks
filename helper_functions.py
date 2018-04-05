@@ -52,17 +52,17 @@ def get_batches(num, data, labels):
 
 def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
     comment = """
-    model_type: \t\t{}, task: {}
+    model_type: \t\t{} bidir({}), task: {}
     hid: \t\t\t{},
     h_hid: \t\t\t{}
     n_attractor_iterations: \t{},
     attractor_dynamics: \t{}
     attractor_noise_level: \t{}
     attractor_noise_type: \t{}
-    attractor_regu-n: \t{}(lambda:{})
-    word_embedding: size(\t{}), train()
+    attractor_regu-n: \t\t{}(lambda:{})
+    word_embedding: size\t({}), train{}
     dropout: \t\t\t{}
-    TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(ops['model_type'], ops['problem_type'], ops['hid'], ops['h_hid'],
+    TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(ops['model_type'], ops['bidirectional'], ops['problem_type'], ops['hid'], ops['h_hid'],
                                                     ops['n_attractor_iterations'],
                                                     ops['attractor_dynamics'], ops['attractor_noise_level'],
                                                     ops['attractor_noise_type'],
@@ -126,19 +126,24 @@ def save_results(ops, saved_train_acc, saved_test_acc, saved_att_loss, saved_ent
     saved_entropy_final = np.array(saved_entropy_final)
 
     np.set_printoptions(precision=3)
-    results = "\n<RESULTS>:\ntype: \t\t\tmean: \t var: \t\n"
-    results += "{} \t{:.4f} \t {:.4f}\n".format("saved_train_acc", np.mean(saved_train_acc),
-                                                np.var(saved_train_acc))
-    results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_test_acc", np.mean(saved_test_acc), np.var(saved_test_acc))
-    results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
-    results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_entropy_final", np.mean(saved_entropy_final), np.var(saved_entropy_final))
+    try:
+        results = "\n<RESULTS>:\ntype: \t\t\tmean: \t var: \t\n"
+        results += "{} \t{:.4f} \t {:.4f}\n".format("saved_train_acc", np.mean(saved_train_acc),
+                                                    np.var(saved_train_acc))
+        results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_test_acc", np.mean(saved_test_acc), np.var(saved_test_acc))
+        results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
+        results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_entropy_final", np.mean(saved_entropy_final), np.var(saved_entropy_final))
 
 
-    results += "TRAIN:" + np.array2string(saved_train_acc, formatter={'float_kind': lambda x: "%.3f" % x})
-    results += "\nTEST:" + np.array2string(saved_test_acc, formatter={'float_kind': lambda x: "%.3f" % x})
-    results += "\nATT_LOSS:" + np.array2string(saved_att_loss, formatter={'float_kind': lambda x: "%.3f" % x})
-    results += "\nENTROPY:" + np.array2string(saved_entropy_final, formatter={'float_kind': lambda x: "%.3f" % x})
-
+        results += "TRAIN:" + np.array2string(saved_train_acc, formatter={'float_kind': lambda x: "%.3f" % x})
+        results += "\nTEST:" + np.array2string(saved_test_acc, formatter={'float_kind': lambda x: "%.3f" % x})
+        results += "\nATT_LOSS:" + np.array2string(saved_att_loss, formatter={'float_kind': lambda x: "%.3f" % x})
+        results += "\nENTROPY:" + np.array2string(saved_entropy_final, formatter={'float_kind': lambda x: "%.3f" % x})
+    except: # if failed to convert to numbers, just print all as string for now TODO
+        results += "TRAIN:" + ';'.join([str(el) for el in saved_train_acc])
+        results += "\nTEST:" + ';'.join([str(el) for el in saved_test_acc])
+        results += "\nATT_LOSS:" + ';'.join([str(el) for el in saved_att_loss])
+        results += "\nENTROPY:" + ';'.join([str(el) for el in saved_entropy_final])
     #         results += "{} \t {:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
 
 
@@ -162,12 +167,11 @@ TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(datetime.date.today(), comment, 
                                             N_TRAIN, N_TEST, SEQ_LEN)
 
     text += results
-    print_into_log(text)
     with open(title, "a") as myfile:
         myfile.write(text)
         print("Saved Results Successfully")
 
-def print_into_log(log_dir, comment, supress=False):
+def print_into_log(log_dir, comment='', supress=False):
     with open(log_dir, "a") as myfile:
         myfile.write(comment)
         print("Logged Successfully: ")
