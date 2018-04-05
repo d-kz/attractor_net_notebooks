@@ -61,7 +61,7 @@ class GRU_attractor(object):
         # Define optimizer for attractor net task
         attr_train_op  = None
         if (ops['n_attractor_iterations'] > 0):
-            optimizer_attr = tf.train.AdamOptimizer(learning_rate=0.008)
+            optimizer_attr = tf.train.AdamOptimizer(learning_rate=ops['lrate '])
             attr_train_op = optimizer_attr.minimize(attr_loss_op, var_list=attr_net_parameters)
 
 

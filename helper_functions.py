@@ -60,25 +60,27 @@ def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
     attractor_noise_level: \t{}
     attractor_noise_type: \t{}
     attractor_regu-n: \t{}(lambda:{})
-    train_word_embeddings: \t{}
+    word_embedding: size(\t{}), train()
+    dropout: \t\t\t{}
     TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(ops['model_type'], ops['problem_type'], ops['hid'], ops['h_hid'],
                                                     ops['n_attractor_iterations'],
                                                     ops['attractor_dynamics'], ops['attractor_noise_level'],
                                                     ops['attractor_noise_type'],
                                                     ops['attractor_regularization'],
                                                     ops['attractor_regularization_lambda'],
-                                                    ops['train_word_embeddings'],
+                                                    ops['embedding_size'], ops['train_word_embeddings'],
+                                                    ops['dropout'],
                                                     N_TRAIN, N_TEST, SEQ_LEN)
 
     return comment
 
 def get_training_progress_comment(epoch, ploss, aloss, train_acc, test_acc, entropy):
-    progress_comment = "epoch " + str(epoch - 1) + ", Loss Pred " + \
-                       "{:.4f}".format(ploss) + ", Loss Att " + \
-                       "{}".format(aloss) + ", Train Acc= " + \
-                       "{:.3f}".format(train_acc) + ", Test Acc= " + \
-                       "{:.4f}".format(test_acc) + ", Entropy= " + \
-                       "{}".format(entropy)
+    progress_comment = "epoch=" + str(epoch - 1) + "; Loss Pred=" + \
+                       "{:.4f}".format(ploss) + "; Loss Att=" + \
+                       "{}".format(aloss) + "; Train Acc=" + \
+                       "{:.3f}".format(train_acc) + "; Test Acc=" + \
+                       "{:.4f}".format(test_acc) + "; Entropy=" + \
+                       "{}".format(entropy) + "\n"
     return progress_comment
 
 #################
@@ -165,8 +167,9 @@ TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(datetime.date.today(), comment, 
         myfile.write(text)
         print("Saved Results Successfully")
 
-def print_into_log(log_dir, comment):
+def print_into_log(log_dir, comment, supress=False):
     with open(log_dir, "a") as myfile:
         myfile.write(comment)
         print("Logged Successfully: ")
-        print(comment)
+        if not supress:
+            print(comment)

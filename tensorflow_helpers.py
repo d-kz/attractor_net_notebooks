@@ -55,7 +55,7 @@ def task_loss(Y, Y_, ops):
     if 'pos' in ops['problem_type']:# cross entropy loss for sequence tagging
         # Y_: (batch_size, seq_len, n_classes), Y: (batch, seq_len)
         fake_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=Y_, labels=Y)
-        #     collapsed_class_Y = tf.reduce_max(Y, axis=2)
+        # collapsed_class_Y = tf.reduce_max(Y, axis=2)
         mask = tf.cast(tf.sign(Y), dtype=tf.float32)
         loss_per_example_per_step = fake_loss*mask #since we only care about information with the real class
         loss_per_example_sum = tf.reduce_sum(loss_per_example_per_step, reduction_indices=[1])
