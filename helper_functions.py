@@ -60,7 +60,7 @@ def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
     attractor_noise_level: \t{}
     attractor_noise_type: \t{}
     attractor_regu-n: \t\t{}(lambda:{})
-    word_embedding: size\t({}), train{}
+    word_embedding: size\t({}), train({})
     dropout: \t\t\t{}
     TRAIN/TEST_SIZE: \t{}/{}, SEQ_LEN: {}""".format(ops['model_type'], ops['bidirectional'], ops['problem_type'], ops['hid'], ops['h_hid'],
                                                     ops['n_attractor_iterations'],
@@ -74,9 +74,12 @@ def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
 
     return comment
 
-def get_training_progress_comment(epoch, ploss, aloss, train_acc, test_acc, entropy):
+def get_training_progress_comment(epoch, ploss, aloss, ploss_val, val_acc, train_acc, test_acc, entropy):
     progress_comment = "epoch=" + str(epoch - 1) + "; Loss Pred=" + \
-                       "{:.4f}".format(ploss) + "; Loss Att=" + \
+                       "{:.4f}".format(ploss) + \
+                       "; Val Loss={:.4f}".format(ploss_val) + \
+                       "; Val Acc={:.4f}".format(val_acc) + \
+                       "; Loss Att=" + \
                        "{}".format(aloss) + "; Train Acc=" + \
                        "{:.3f}".format(train_acc) + "; Test Acc=" + \
                        "{:.4f}".format(test_acc) + "; Entropy=" + \
@@ -119,11 +122,16 @@ def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=Fa
 
 
 ##################
-def save_results(ops, saved_train_acc, saved_test_acc, saved_att_loss, saved_entropy_final, N_TRAIN, N_TEST, SEQ_LEN, comment):
+def save_results(ops, saved_epochs, saved_train_acc, saved_test_acc, saved_att_loss, saved_entropy_final, saved_val_acc,
+                 saved_val_loss, saved_train_loss, N_TRAIN, N_TEST, SEQ_LEN, comment):
     saved_train_acc = np.array(saved_train_acc)
     saved_test_acc = np.array(saved_test_acc)
     saved_att_loss = np.array(saved_att_loss)
     saved_entropy_final = np.array(saved_entropy_final)
+    saved_epochs = np.array(saved_epochs)
+    saved_val_acc = np.array(saved_val_acc)
+    saved_val_loss = np.array(saved_val_loss)
+    saved_train_loss = np.array(saved_train_loss)
 
     np.set_printoptions(precision=3)
     try:
@@ -134,16 +142,30 @@ def save_results(ops, saved_train_acc, saved_test_acc, saved_att_loss, saved_ent
         results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
         results += "{} \t\t{:.4f} \t {:.4f}\n".format("saved_entropy_final", np.mean(saved_entropy_final), np.var(saved_entropy_final))
 
-
-        results += "TRAIN:" + np.array2string(saved_train_acc, formatter={'float_kind': lambda x: "%.3f" % x})
+        results += "\nEPOCHS:" + np.array2string(saved_epochs, formatter={'float_kind': lambda x: "%.3f" % x})
+        results += "\nTRAIN:" + np.array2string(saved_train_acc, formatter={'float_kind': lambda x: "%.3f" % x})
         results += "\nTEST:" + np.array2string(saved_test_acc, formatter={'float_kind': lambda x: "%.3f" % x})
         results += "\nATT_LOSS:" + np.array2string(saved_att_loss, formatter={'float_kind': lambda x: "%.3f" % x})
         results += "\nENTROPY:" + np.array2string(saved_entropy_final, formatter={'float_kind': lambda x: "%.3f" % x})
+
+        results += "\nsaved_val_acc:" + np.array2string(saved_val_acc , formatter={'float_kind': lambda x: "%.3f" % x})
+        results += "\nsaved_val_loss:" + np.array2string(saved_val_loss , formatter={'float_kind': lambda x: "%.3f" % x})
+        results += "\nsaved_train_loss:" + np.array2string(saved_train_loss , formatter={'float_kind': lambda x: "%.3f" % x})
+
+
+
+
     except: # if failed to convert to numbers, just print all as string for now TODO
-        results += "TRAIN:" + ';'.join([str(el) for el in saved_train_acc])
+        results += "\nEPOCHS:" + ';'.join([str(el) for el in saved_epochs])
+        results += "\nTRAIN:" + ';'.join([str(el) for el in saved_train_acc])
         results += "\nTEST:" + ';'.join([str(el) for el in saved_test_acc])
         results += "\nATT_LOSS:" + ';'.join([str(el) for el in saved_att_loss])
         results += "\nENTROPY:" + ';'.join([str(el) for el in saved_entropy_final])
+
+        results += "\nsaved_val_acc:" + ';'.join([str(el) for el in saved_val_acc])
+        results += "\nsaved_val_loss:" + ';'.join([str(el) for el in saved_val_loss])
+        results += "\nsaved_train_loss:" + ';'.join([str(el) for el in saved_train_loss])
+
     #         results += "{} \t {:.4f} \t {:.4f}\n".format("saved_att_loss", np.mean(saved_att_loss), np.var(saved_att_loss))
 
 

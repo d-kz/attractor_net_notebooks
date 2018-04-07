@@ -20,6 +20,7 @@ def add_input_noise(noise_level, X, Y, n_repeat):
 def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
     cutoff_seq = lambda x, len: x[0:len]
     maps = None
+    X_val, Y_val = None, None
     if (task == 'parity' or task == 'parity_length'):
         X_train, Y_train = generate_parity_majority_sequences(seq_len, n_train, task)
         X_test, Y_test = generate_parity_majority_sequences(seq_len, n_test, task)
@@ -68,8 +69,15 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
         X_train = X[n_test:,:]
         Y_train = Y[n_test:,:]
 
+        val_cut = int(0.2*X_train.shape[0])
+        X_val = X_train[0:val_cut,:]
+        Y_val = Y_train[0:val_cut,:]
+        X_train = X_train[val_cut:,:]
+        Y_train = Y_train[val_cut:,:]
 
-    return [X_train, Y_train, X_test, Y_test, maps]
+
+
+    return [X_train, Y_train, X_test, Y_test, X_val, Y_val, maps]
 
 ################ generate_parity_majority_sequences #####################################
 def generate_parity_majority_sequences(N, count, task):
@@ -111,7 +119,23 @@ def get_pos_brown_dataset(directory, partition):
 
     return [dataset_X, dataset_Y, maps]
 
+def get_german_ner_dataset(directory):
+    f = gzip.open('pkl/embeddings.pkl.gz', 'rb')
+    embeddings = pkl.load(f)
+    f.close()
 
+    label2Idx = embeddings['label2Idx']
+    wordEmbeddings = embeddings['wordEmbeddings']
+    caseEmbeddings = embeddings['caseEmbeddings']
+
+    # Inverse label mapping
+    idx2Label = {v: k for k, v in label2Idx.items()}
+
+    f = gzip.open('pkl/data.pkl.gz', 'rb')
+    train_data = pkl.load(f)
+    dev_data = pkl.load(f)
+    test_data = pkl.load(f)
+    f.close()
 
 def pick_task(task_name, ops):
     if (task_name=='parity'):
