@@ -27,7 +27,7 @@ class GRU_attractor(object):
         #
         # Masking cell outputs
         #
-        if 'pos' in ops['problem_type']:
+        if ops['prediction_type'] == 'seq':
             # pass in the embedding instead of direct index tensor
             [h_net_seq, h_attractor_collection, h_clean_seq] = GRU(X, ops, params)
             h_clean_seq_output = h_clean_seq # store before reshaping happens

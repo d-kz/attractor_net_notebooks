@@ -52,7 +52,7 @@ def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
 #
 ######################################################################################
 def task_loss(Y, Y_, ops):
-    if 'pos' in ops['problem_type']:# cross entropy loss for sequence tagging
+    if ops['prediction_type'] == 'seq':# cross entropy loss for sequence tagging
         # Y_: (batch_size, seq_len, n_classes), Y: (batch, seq_len)
         fake_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=Y_, labels=Y)
         # collapsed_class_Y = tf.reduce_max(Y, axis=2)
@@ -72,7 +72,7 @@ def task_accuracy(Y, Y_, ops):
     :param ops: model params
     :return: accuracy tensor operation
     """
-    if 'pos' in ops['problem_type']:  # apply mask, average by element nonmasekd
+    if ops['prediction_type'] == 'seq':  # apply mask, average by element nonmasekd
         mask = tf.cast(tf.sign(Y), dtype=tf.float32)
         id_predicted = tf.argmax(tf.nn.softmax(Y_), axis=2)
         fake_accuracy = tf.cast(tf.equal(id_predicted, Y), dtype=tf.float32)
@@ -95,7 +95,7 @@ def project_into_output(Y, output, in_size, out_size, ops):
     W_out, b_out = project_init(in_size, out_size)
 
     batch_size = tf.shape(Y)[0]
-    if 'pos' in ops['problem_type']:
+    if ops['prediction_type'] == 'seq':
         # for efficiency's sake just do one matmul.
         output_trans = tf.transpose(output, [1, 0, 2])  # [seq_len, batch_size, n_hid] -> [batch_size, seq_len, n_hid]
         output_trans = tf.reshape(output_trans,

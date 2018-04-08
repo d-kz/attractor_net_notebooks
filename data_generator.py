@@ -3,6 +3,14 @@ import itertools
 import fsm
 import pickle
 import random
+import gzip
+import sys
+if (sys.version_info > (3, 0)):
+    import pickle as pkl
+else:
+    #Python 2.7 imports
+    import cPickle as pkl
+
 
 
 
@@ -75,8 +83,21 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
         X_train = X_train[val_cut:,:]
         Y_train = Y_train[val_cut:,:]
 
+    elif (task == "ner_german"):
+        X, Y, maps, embeddings_dict = get_ner_german_dataset('data/ner_german')
+        # 16% test, 7% dev
+        test_cut = int(len(Y)*0.17)
+        val_cut = int(len(Y) * 0.07)
+        train_cut = int(len(Y) - (test_cut + val_cut))
+        # train_data, test_data, dev_data (like was in the original dataset)
+        X_train = X[0:train_cut, :, :]
+        Y_train = Y[0:train_cut, :]
 
+        X_test = X[train_cut:train_cut + test_cut, :, :]
+        Y_test = Y[train_cut:train_cut + test_cut, :]
 
+        X_val = X[train_cut + test_cut:, :, :]
+        Y_val = Y[train_cut + test_cut:, :]
     return [X_train, Y_train, X_test, Y_test, X_val, Y_val, maps]
 
 ################ generate_parity_majority_sequences #####################################
@@ -119,23 +140,42 @@ def get_pos_brown_dataset(directory, partition):
 
     return [dataset_X, dataset_Y, maps]
 
-def get_german_ner_dataset(directory):
-    f = gzip.open('pkl/embeddings.pkl.gz', 'rb')
+def get_ner_german_dataset(directory):
+    with open(directory + "/dataset_cutoff.pickle", 'rb') as handle:
+        dataset = pickle.load(handle)
+        tokens, casing, labels  = dataset['tokens'], dataset['casing'], dataset['Y']
+    with open("data/ner_german/data_params.pickle", 'rb') as handle:
+        dataset_params = pickle.load(handle)
+
+    # embeddinigs:
+    f = gzip.open('data/ner_german/embeddings.pkl.gz', 'rb')
     embeddings = pkl.load(f)
     f.close()
 
     label2Idx = embeddings['label2Idx']
     wordEmbeddings = embeddings['wordEmbeddings']
     caseEmbeddings = embeddings['caseEmbeddings']
-
     # Inverse label mapping
     idx2Label = {v: k for k, v in label2Idx.items()}
+    maps = {'id2tag': idx2Label, 'tag2id': label2Idx}
+    embeddings_dict = {'word': wordEmbeddings, "case": caseEmbeddings}
 
-    f = gzip.open('pkl/data.pkl.gz', 'rb')
-    train_data = pkl.load(f)
-    dev_data = pkl.load(f)
-    test_data = pkl.load(f)
-    f.close()
+    # putting the embeddings in
+    X_tok = np.zeros([len(tokens), dataset_params['seq_len_max'], len(wordEmbeddings[0])])
+    X_cas = np.zeros([len(tokens), dataset_params['seq_len_max'], len(caseEmbeddings[0])])
+    Y = np.zeros([len(tokens), dataset_params['seq_len_max']])
+    for i, x in enumerate(tokens):
+        X_tok[i, :len(x), :] = wordEmbeddings[x]
+    for i, x in enumerate(casing):
+        X_cas[i, :len(x), :] = caseEmbeddings[x]
+    for i, x in enumerate(labels):
+        Y[i, :len(x)] = x
+
+    X = np.concatenate([X_tok, X_cas], axis=2)
+    # putting in all the embeddings right away
+    return [X, Y, maps, embeddings_dict]
+
+
 
 def pick_task(task_name, ops):
     if (task_name=='parity'):
@@ -187,6 +227,17 @@ def pick_task(task_name, ops):
         N_TRAIN = total_examples - N_TEST
         ops['seq_len'] = SEQ_LEN
         ops['vocab_size'] = dataset_params['vocab_size']
+    elif (task_name == 'ner_german'):
+        N_INPUT = 108 # word embed + case embed
+        with open("data/ner_german/data_params.pickle", 'rb') as handle:
+            dataset_params = pickle.load(handle)
+        SEQ_LEN = dataset_params['seq_len_max']
+        N_CLASSES = dataset_params['n_classes']
+        total = dataset_params['total_examples']
+        N_TEST = int(total * 0.17)
+        N_VALID = int(total * 0.07)
+        N_TRAIN = int(total - (N_TEST + N_VALID))
+        ops['seq_len'] = SEQ_LEN
     else:
         print('Invalid task: ',task_name)
     ops['in'] = N_INPUT
