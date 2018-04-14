@@ -17,8 +17,10 @@ def load_pretrained_embeddings(embedding_path, maps, ops):
 
     # align embeddings to dictionary used in dataset:
     words_not_found = []
-    unique_words_in_data = len(maps['id2word'])
-
+    # TODO: not sure what's the best way to handle this since some unicode words don't get processed, but we don't
+    # want to mess up the id2word tagging
+    unique_words_in_data = np.max(maps['id2word'].keys()) + 1
+    print(unique_words_in_data)
     embeddings = np.random.uniform(low=-1.0, high=1.0, size=[unique_words_in_data, ops['embedding_size']]).astype("float32")
     for id, word in maps['id2word'].items():
         if word in pretrained_emb:

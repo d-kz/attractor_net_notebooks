@@ -5,6 +5,19 @@ import numpy as np
 from sklearn.metrics.cluster import mutual_info_score
 
 
+class EarlyStopper():
+    def __init__(self, min_delta):
+        self.best_loss = 1e10
+        self.patience = 0  # our patience
+
+    def update(self, current_loss):
+        # current_loss is decreasing so the lower we get, the better (old - current) > 0 is good.
+        if self.best_loss > current_loss:
+            self.best_loss = current_loss
+            self.patience = 0
+        else:
+            self.patience += 1
+
 
 class MutInfSaver():
     def __init__(self):
@@ -115,10 +128,12 @@ def compute_entropy_fullvec(h_final, ops, n_bins=10):
     if h_final == []:
         return 0.0  # for matching a space between new runs
 
-    h_flat = h_final.reshape(-1, ops['hid'])
+    # TODO: should already be reshaped
+    # h_flat = h_final.reshape(-1, ops['hid'])
+
     # put values into bins
     bins = np.array([-1.0 + 2.0 * i / n_bins for i in range(n_bins + 1)])
-    h_digitized = np.digitize(h_flat, bins)
+    h_digitized = np.digitize(h_final, bins)
     # compute probability for each bin
     neuron_distn = h_digitized
     # axis=0 will compute unique vectors instead of by element
@@ -127,7 +142,7 @@ def compute_entropy_fullvec(h_final, ops, n_bins=10):
     return neurons_entropy
 
 
-def get_mut_inf_for_vecs(A, B, n_bins=10):
+def get_avg_mut_inf_for_vecs(A, B, n_bins=10):
     """
     return the average mut_inf between all neuron pairs of 2 vectors given
     """
@@ -145,8 +160,34 @@ def get_mut_inf_for_vecs(A, B, n_bins=10):
             total_mut_inf += mutual_info_score(A_digitized[:, i], B_digitized[:, j])
     return total_mut_inf / (m * n)
 
+def get_mut_inf_for_fullvec(A, B, n_bins=10):
+    """
+    return the average mut_inf between all neuron pairs of 2 vectors given
+    """
+    m = A.shape[1]
+    n = B.shape[1]
+    bins = np.array([-1.0 + 2.0 * i / n_bins for i in range(n_bins + 1)])
+    A_digitized = np.digitize(A, bins)
+    B_digitized = np.digitize(B, bins)
+    A_and_B_digitized = np.concatenate([A_digitized, B_digitized], axis=1)
+    # A_and_B_digitized = np.concatenate([B_digitized, A_digitized], axis=1)
 
-def flat_mutual_inf(h_init, h_atts, h_final, ops):
+
+    # mutual information (A,B) = H(A) + H(B) - H(A, B)
+    A_elements, A_pdf = np.unique(A_digitized, return_counts=True, axis=0)  # returns sorted by unique value
+    H_of_A = sc.stats.entropy(A_pdf)
+
+    B_elements, B_pdf = np.unique(B_digitized, return_counts=True, axis=0)  # returns sorted by unique value
+    H_of_B = sc.stats.entropy(B_pdf)
+
+    B_elements, B_pdf = np.unique(A_and_B_digitized, return_counts=True, axis=0)  # returns sorted by unique value
+    H_of_A_and_B = sc.stats.entropy(B_pdf)
+
+    mutual_information = H_of_A + H_of_B - H_of_A_and_B
+    return mutual_information
+
+
+def flat_mutual_inf(h_init, h_atts, h_final, target='first'):
     """
     returns an array of of mutual information values between initial hidden vector
     and all consecutive attractor state vectors
@@ -155,15 +196,22 @@ def flat_mutual_inf(h_init, h_atts, h_final, ops):
     if h_init == []:
         return []  # for matching a space between new runs
     # flatten over the sequence & batches
-    H_target = h_init.reshape(-1, ops['hid'])
-    Hs = [H_target]
+
+    if target == "first":
+        H_target = h_init
+    elif target == 'last':
+        H_target = h_final
+    elif target =='mid':
+        H_target = np.tanh(h_atts[5])
+    Hs = [h_init]
     for h_att in h_atts:
-        Hs.append(h_att.reshape(-1, ops['h_hid']))
-    Hs.append(h_final.reshape(-1, ops['hid']))
+        # TODO: note we are tanh'in since projection2 has attractor steps in different range(not tanh'ed)
+        Hs.append(np.tanh(h_att))
+    Hs.append(h_final)
 
     mut_infs = []
     for H in Hs:
-        mut_inf = get_mut_inf_for_vecs(H_target, H)
+        mut_inf = get_mut_inf_for_fullvec(H_target, H)
         mut_infs.append(mut_inf)
     return mut_infs
 

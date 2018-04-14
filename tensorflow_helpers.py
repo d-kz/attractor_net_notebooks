@@ -29,6 +29,8 @@ def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
     batches = get_batches(batch_size, X_data, Y_data)
     collect_outputs = [[] for i in range(len(input_tensors))]
     for (batch_x, batch_y) in batches:
+        print(batch_x)
+
         outputs = sess.run(input_tensors, feed_dict={X: batch_x, Y: batch_y})
         for i, output in enumerate(outputs):
             collect_outputs[i].append(output)
@@ -62,7 +64,7 @@ def task_loss(Y, Y_, ops):
         loss_per_example_average = loss_per_example_sum/tf.reduce_sum(mask, axis=[1])
         pred_loss_op = tf.reduce_mean(loss_per_example_average, name="loss")
     else: # MSE for singular output
-        pred_loss_op = tf.reduce_mean(tf.pow(Y_ - Y, 2) / .25)
+        pred_loss_op = tf.reduce_mean(tf.pow(Y_ - tf.cast(Y, 'float'), 2) / .25)
     return pred_loss_op
 
 def task_accuracy(Y, Y_, ops):
@@ -80,7 +82,7 @@ def task_accuracy(Y, Y_, ops):
         accuracy_per_example = tf.reduce_sum(accuracy_masked, 1) / tf.reduce_sum(mask, axis=[1])
         accuracy = tf.reduce_mean(accuracy_per_example, name="valid_accuracy")
     else:
-        correct_pred = tf.equal(tf.round(Y_), Y)
+        correct_pred = tf.equal(tf.cast(tf.round(Y_), tf.int64), Y)
         accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
     return accuracy
 
@@ -102,7 +104,10 @@ def project_into_output(Y, output, in_size, out_size, ops):
                                   [-1, in_size])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
         out = tf.nn.sigmoid(tf.matmul(output_trans, W_out) + b_out)
         Y_ = tf.reshape(out, [batch_size, ops['seq_len'], out_size])
+    elif ops['masking']:
+        Y_ = tf.nn.sigmoid(tf.matmul(output, W_out) + b_out)
     else:
+        # without masking we had no need to bother with dimensions, so let's just leave it as is. (sorry)
         Y_ = tf.nn.sigmoid(tf.matmul(output[-1], W_out) + b_out)
     return Y_
 
@@ -118,7 +123,7 @@ def compute_f1(predictions, correct, idx2Label):
     label_pred = [idx2Label[element] for element in predictions]
 
     label_correct = [idx2Label[element] for element in correct]
-
+    # print(label_correct[0:1000], label_pred[0:1000])
     # print label_pred
     # print label_correct
 
@@ -145,10 +150,13 @@ def compute_precision(guessed_sentences, correct_sentences):
     while idx < len(guessed):
         if guessed[idx][0] == 'B':  # A new chunk starts
             count += 1
-
             if guessed[idx] == correct[idx]:
+                # print(guessed[idx:idx + 5], correct[idx:idx + 5])
+
                 idx += 1
                 correctlyFound = True
+
+
 
                 while idx < len(guessed) and guessed[idx][0] == 'I':  # Scan until it no longer starts with I
                     if guessed[idx] != correct[idx]:
@@ -161,6 +169,7 @@ def compute_precision(guessed_sentences, correct_sentences):
                         correctlyFound = False
 
                 if correctlyFound:
+                    print(guessed[idx-5:idx], correct[idx-5:idx])
                     correctCount += 1
             else:
                 idx += 1

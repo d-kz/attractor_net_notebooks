@@ -98,6 +98,25 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
 
         X_val = X[train_cut + test_cut:, :, :]
         Y_val = Y[train_cut + test_cut:, :]
+
+    elif (task == "sentiment_imdb"):
+        X, Y, maps = get_sentiment_imbd('data/imdb_keras')
+
+        Y = np.expand_dims(Y, axis=1)
+        # 16% test, 7% dev
+        test_cut = int(len(Y)*0.20)
+        val_cut = int(len(Y) * 0.20)
+        train_cut = int(len(Y) - (test_cut + val_cut))
+        # train_data, test_data, dev_data (like was in the original dataset)
+        print(X.shape, Y.shape, X[0])
+        X_train = X[0:train_cut, :]
+        Y_train = Y[0:train_cut, :]
+
+        X_test = X[train_cut:train_cut + test_cut, :]
+        Y_test = Y[train_cut:train_cut + test_cut, :]
+
+        X_val = X[train_cut + test_cut:, :]
+        Y_val = Y[train_cut + test_cut:, :]
     return [X_train, Y_train, X_test, Y_test, X_val, Y_val, maps]
 
 ################ generate_parity_majority_sequences #####################################
@@ -130,7 +149,7 @@ def generate_parity_majority_sequences(N, count, task):
 def get_pos_brown_dataset(directory, partition):
     with open(directory + "/data.pickle", 'rb') as handle:
         dataset = pickle.load(handle)
-        dataset_X, dataset_Y = np.array(dataset['X']), np.array(dataset['Y'])
+        dataset_X, dataset_Y = np.array(dataset['X']).astype(_int), np.array(dataset['Y']).astype(int)
 
     map_names = ['id2tag', "tag2id", "id2word", "word2id", "id2prior"]
     maps = {map_name: [] for map_name in map_names}
@@ -139,6 +158,31 @@ def get_pos_brown_dataset(directory, partition):
             maps[map_name] = pickle.load(handle)
 
     return [dataset_X, dataset_Y, maps]
+
+def get_sentiment_imbd(directory):
+    with open(directory + "/dataset.pickle", 'rb') as handle:
+        dataset = pickle.load(handle)
+        dataset_X, dataset_Y = np.array(dataset['X']), np.array(dataset['Y'])
+
+    map_names = ["id2word", "word2id"]
+    maps = {}
+    for map_name in map_names:
+        with open(directory + '/maps.pickle', 'rb') as handle:
+            maps = pickle.load(handle)
+    with open("data/imdb_keras/dataset_params.pickle", 'rb') as handle:
+        dataset_params = pickle.load(handle)
+        SEQ_LEN = dataset_params['seq_len_max']
+
+    X = np.zeros([len(dataset_X), SEQ_LEN])
+    Y = np.zeros([len(dataset_X)])
+    for i, x in enumerate(dataset_X):
+        X[i, :len(x)] = x
+    for i, x in enumerate(dataset_Y):
+        Y[i] = x
+    X = X.astype("int64")
+    Y = Y.astype("int64")
+
+    return [X, Y, maps]
 
 def get_ner_german_dataset(directory):
     with open(directory + "/dataset_cutoff.pickle", 'rb') as handle:
@@ -236,6 +280,17 @@ def pick_task(task_name, ops):
         total = dataset_params['total_examples']
         N_TEST = int(total * 0.17)
         N_VALID = int(total * 0.07)
+        N_TRAIN = int(total - (N_TEST + N_VALID))
+        ops['seq_len'] = SEQ_LEN
+    elif (task_name == 'sentiment_imdb'):
+        N_INPUT = ops['embedding_size'] # word embed
+        with open("data/imdb_keras/dataset_params.pickle", 'rb') as handle:
+            dataset_params = pickle.load(handle)
+        SEQ_LEN = dataset_params['seq_len_max']
+        N_CLASSES = 1 # output is singular since only 2 classes.
+        total = dataset_params['total_examples']
+        N_TEST = int(total * 0.20)
+        N_VALID = int(total * 0.20)
         N_TRAIN = int(total - (N_TEST + N_VALID))
         ops['seq_len'] = SEQ_LEN
     else:
