@@ -98,16 +98,16 @@ class GRU_attractor(object):
             # forward: get index right before first zero element
             # backward: take the last element since they are all aligned
             if direction == 'forward':
-                last_element_id = tf.argmin(Y_transposed,
-                                            axis=0) - 1  # find first zero'th element across sequences and take one right before it
-                collect_indices = tf.stack([tf.cast(tf.range(batch_size), 'int64'), last_element_id], axis=1)
+                Y_transposed_plus_zeroes = tf.concat([Y_transposed, tf.cast(tf.zeros([1, batch_size]),'int64')], axis=0) # since full sequences will get ignored othewise, force append with 0
+                last_element_id = tf.argmin(Y_transposed_plus_zeroes, axis=0) - 1  # find first zero'th element across sequences and take one right before it.
+                collect_indices = tf.stack([last_element_id, tf.cast(tf.range(batch_size), 'int64')], axis=1) #(batch_size, 2). Tuples of format: [sequence_position, batch_id]
                 collect = tf.gather_nd(h_clean_seq_output, collect_indices)
             else:
                 # h_clean_seq_output: (seq_len, batch_size, n_hid)
                 # get the last element slice
                 slice_shape = [1, -1, ops['hid']]  # get onle 1 sequence element, all batches, all hidden units
                 # start at last element (ops['seq_len']), first batch element, first hidden unit:
-                collect = tf.slice(h_clean_seq_output, [ops['seq_len'], 0, 0], slice_shape)
+                collect = tf.slice(h_clean_seq_output, [ops['seq_len']-1, 0, 0], slice_shape) #seq_len - 1 since we need id, not actual count
                 collect = tf.squeeze(collect, axis=0)
 
             self.output = collect # (batch_size, n_hid)
