@@ -377,3 +377,60 @@ def GRU(X, ops, params):
         # h_net_seq - output before attractor is applied
         return [h_net_seq, h_attractor_collection, h_clean_seq]
 
+
+######### BEGIN TANH RNN ########################################################
+
+def RNN_tanh_params_init(ops, suffix=''):
+    N_INPUT = ops['in']
+    N_HIDDEN = ops['hid']
+    with tf.variable_scope("TASK_WEIGHTS"):
+        with tf.variable_scope(suffix):
+            W = {'in': mozer_get_variable("W_in", [N_INPUT, N_HIDDEN]),
+                 'rec': mozer_get_variable("W_rec", [N_HIDDEN, N_HIDDEN])
+                 }
+            b = {'rec': mozer_get_variable("b_rec", [N_HIDDEN]),
+                 }
+
+    params = {
+        'W': W,
+        'b': b
+    }
+    return params
+
+
+def RNN_tanh(X, ops, params):
+    with tf.variable_scope("TANH"):
+        W = params['W']
+        b = params['b']
+        attr_net = params['attr_net']
+        N_HIDDEN = ops['hid']
+        block_size = [-1, N_HIDDEN]
+
+        def _step(accumulated_vars, input_vars):
+            h_prev, _, _ = accumulated_vars
+            x = input_vars
+
+            # update the hidden state but don't apply the squashing function
+            h = tf.matmul(h_prev, W['rec']) + tf.matmul(x, W['in']) + b['rec']
+
+            # insert attractor net
+            h_net = tf.atanh(tf.minimum(.99999, tf.maximum(-.99999, h)))
+            h_cleaned, h_attractor_collection = run_attractor_net(h_net, attr_net, ops)
+
+            return [h_cleaned, h_net, h_attractor_collection]
+
+        # X:                       (batch_size, SEQ_LEN, N_INPUT)
+        # expected shape for scan: (SEQ_LEN, batch_size, N_INPUT)
+        batch_size = tf.shape(X)[0]
+        [h_clean_seq, h_net_seq, h_attractor_collection] = tf.scan(_step,
+                                                                   elems=tf.transpose(X, [1, 0, 2]),
+                                                                   initializer=[
+                                                                       tf.zeros([batch_size, N_HIDDEN], tf.float32),
+                                                                       # h_clean
+                                                                       tf.zeros([batch_size, N_HIDDEN], tf.float32),
+                                                                       # h_net
+                                                                       [tf.zeros([batch_size, ops['h_hid']], tf.float32)
+                                                                        for i in range(ops['n_attractor_iterations'])]],
+                                                                   name='TANH/scan')
+
+        return [h_net_seq, h_attractor_collection, h_clean_seq]

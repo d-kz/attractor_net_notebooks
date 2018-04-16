@@ -76,7 +76,7 @@ def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
 
     return comment
 
-def get_training_progress_comment(epoch, ploss, aloss, ploss_val, val_acc, train_acc, test_acc, entropy):
+def get_training_progress_comment(epoch, ploss, aloss, ploss_val, val_acc, train_acc, test_acc, entropy, entropy_test=''):
     progress_comment = "epoch=" + str(epoch - 1) + "; Loss Pred=" + \
                        "{:.4f}".format(ploss) + \
                        "; Val Loss={:.4f}".format(ploss_val) + \
@@ -85,7 +85,9 @@ def get_training_progress_comment(epoch, ploss, aloss, ploss_val, val_acc, train
                        "{}".format(aloss) + "; Train Acc=" + \
                        "{:.3f}".format(train_acc) + "; Test Acc=" + \
                        "{:.4f}".format(test_acc) + "; Entropy=" + \
-                       "{}".format(entropy) + "\n"
+                       "{}".format(entropy) + \
+                        "; Entropy_Test=" + \
+                        "{}".format(entropy_test) + "\n"
     return progress_comment
 
 #################
@@ -125,7 +127,7 @@ def translate_ids_to_words(x, y, y_true, id2word, id2tag, printout=False, log=Fa
 
 ##################
 def save_results(ops, saved_epochs, saved_train_acc, saved_test_acc, saved_att_loss, saved_entropy_final, saved_val_acc,
-                 saved_val_loss, saved_train_loss, N_TRAIN, N_TEST, SEQ_LEN, comment):
+                 saved_val_loss, saved_train_loss, N_TRAIN, N_TEST, SEQ_LEN, comment, saved_entropy_final_test=[]):
     saved_train_acc = np.array(saved_train_acc)
     saved_test_acc = np.array(saved_test_acc)
     saved_att_loss = np.array(saved_att_loss)
@@ -134,6 +136,7 @@ def save_results(ops, saved_epochs, saved_train_acc, saved_test_acc, saved_att_l
     saved_val_acc = np.array(saved_val_acc)
     saved_val_loss = np.array(saved_val_loss)
     saved_train_loss = np.array(saved_train_loss)
+    saved_entropy_final_test = np.array(saved_entropy_final_test)
 
     np.set_printoptions(precision=3)
     try:
@@ -149,6 +152,7 @@ def save_results(ops, saved_epochs, saved_train_acc, saved_test_acc, saved_att_l
         results += "\nTEST:" + np.array2string(saved_test_acc, formatter={'float_kind': lambda x: "%.3f" % x})
         results += "\nATT_LOSS:" + np.array2string(saved_att_loss, formatter={'float_kind': lambda x: "%.3f" % x})
         results += "\nENTROPY:" + np.array2string(saved_entropy_final, formatter={'float_kind': lambda x: "%.3f" % x})
+        results += "\nENTROPY_TEST:" + np.array2string(saved_entropy_final_test, formatter={'float_kind': lambda x: "%.3f" % x})
 
         results += "\nsaved_val_acc:" + np.array2string(saved_val_acc , formatter={'float_kind': lambda x: "%.3f" % x})
         results += "\nsaved_val_loss:" + np.array2string(saved_val_loss , formatter={'float_kind': lambda x: "%.3f" % x})
@@ -163,6 +167,7 @@ def save_results(ops, saved_epochs, saved_train_acc, saved_test_acc, saved_att_l
         results += "\nTEST:" + ';'.join([str(el) for el in saved_test_acc])
         results += "\nATT_LOSS:" + ';'.join([str(el) for el in saved_att_loss])
         results += "\nENTROPY:" + ';'.join([str(el) for el in saved_entropy_final])
+        results += "\nENTROPY_TEST:" + ';'.join([str(el) for el in saved_entropy_final_test])
 
         results += "\nsaved_val_acc:" + ';'.join([str(el) for el in saved_val_acc])
         results += "\nsaved_val_loss:" + ';'.join([str(el) for el in saved_val_loss])
