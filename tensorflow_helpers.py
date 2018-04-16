@@ -29,8 +29,6 @@ def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
     batches = get_batches(batch_size, X_data, Y_data)
     collect_outputs = [[] for i in range(len(input_tensors))]
     for (batch_x, batch_y) in batches:
-        print(batch_x)
-
         outputs = sess.run(input_tensors, feed_dict={X: batch_x, Y: batch_y})
         for i, output in enumerate(outputs):
             collect_outputs[i].append(output)
@@ -82,7 +80,7 @@ def task_accuracy(Y, Y_, ops):
         accuracy_per_example = tf.reduce_sum(accuracy_masked, 1) / tf.reduce_sum(mask, axis=[1])
         accuracy = tf.reduce_mean(accuracy_per_example, name="valid_accuracy")
     else:
-        correct_pred = tf.equal(tf.cast(tf.round(Y_), tf.int64), Y)
+        correct_pred = tf.equal(tf.cast(tf.round(Y_), tf.int32), tf.cast(Y, tf.int32))
         accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
     return accuracy
 

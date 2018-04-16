@@ -78,8 +78,7 @@ class GRU_attractor(object):
                                                                ops['attractor_regularization_lambda'],
                                                                ops['attractor_noise_level'], ops)
 
-        attr_net_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS")
-
+        attr_net_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS" + '/{}'.format(suffix))
         # Define optimizer for attractor net task
         attr_train_op  = None
         if (ops['n_attractor_iterations'] > 0):

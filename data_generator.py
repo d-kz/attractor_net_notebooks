@@ -29,6 +29,7 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
     cutoff_seq = lambda x, len: x[0:len]
     maps = None
     X_val, Y_val = None, None
+    print(task)
     if (task == 'parity' or task == 'parity_length'):
         X_train, Y_train = generate_parity_majority_sequences(seq_len, n_train, task)
         X_test, Y_test = generate_parity_majority_sequences(seq_len, n_test, task)
@@ -36,12 +37,12 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
            X_test, Y_test = add_input_noise(input_noise_level,X_test,Y_test,2)
     # for majority, split all sequences into training and test sets
     elif (task == 'majority'):
-        X_train, Y_train = generate_parity_majority_sequences(seq_len, n_train+n_test, task)
+        X, Y = generate_parity_majority_sequences(seq_len, n_train+n_test, task)
         pix = np.random.permutation(n_train+n_test)
-        X_train = X_train[pix[:n_train],:]
-        Y_train = Y_train[pix[:n_train],:]
-        X_test = X_train[pix[n_train:],:]
-        Y_test = Y_train[pix[n_train:],:]
+        X_train = X[pix[:n_train],:]
+        Y_train = Y[pix[:n_train],:]
+        X_test = X[pix[n_train:],:]
+        Y_test = Y[pix[n_train:],:]
         if (input_noise_level > 0.):
            X_test, Y_test = add_input_noise(input_noise_level,X_test,Y_test,1)
     elif (task == 'reber'):
@@ -229,7 +230,7 @@ def pick_task(task_name, ops):
         N_TRAIN = pow(2,SEQ_LEN) # train on all seqs
         N_TEST = pow(2,SEQ_LEN)
         solved_problem_count = 0
-    if (task_name=='parity_length'):
+    elif (task_name=='parity_length'):
         SEQ_LEN = 12
         N_INPUT = 1           # number of input units
         N_CLASSES = 1         # number of output units
@@ -237,7 +238,7 @@ def pick_task(task_name, ops):
         N_TEST = 1000#1000#pow(2,SEQ_LEN)
         solved_problem_count = 0
     elif (task_name=='majority'):
-        SEQ_LEN = 5
+        SEQ_LEN = 12
         N_INPUT = 1           # number of input units
         N_CLASSES = 1         # number of output units
         N_TRAIN = 64 
