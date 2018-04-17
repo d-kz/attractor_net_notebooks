@@ -36,6 +36,20 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
         if (input_noise_level > 0.):
            X_test, Y_test = add_input_noise(input_noise_level,X_test,Y_test,2)
     # for majority, split all sequences into training and test sets
+    elif task == 'parity_length_noisy_longer_remainder':
+        X, Y = generate_parity_majority_sequences(seq_len, n_train, task)
+        # remainder
+        train_split = int((n_train * 0.25))
+        X_train, Y_train, X_test_left, Y_test_left = X[0:train_split], Y[0:train_split], X[train_split:], Y[train_split:]
+        # noisy
+        if (input_noise_level > 0.):
+            X_test_noise, Y_test_noise = add_input_noise(input_noise_level*2, X_train, Y_train, 2)
+        # longer
+        longer_len = seq_len*3
+        X_test_long, Y_test_long = generate_parity_majority_sequences(longer_len, len(X), task)
+
+        X_test = [X_test_left, X_test_noise, X_test_long]
+        Y_test = [Y_test_left, Y_test_noise, Y_test_long]
     elif (task == 'majority'):
         X, Y = generate_parity_majority_sequences(seq_len, n_train+n_test, task)
         pix = np.random.permutation(n_train+n_test)
@@ -237,18 +251,24 @@ def pick_task(task_name, ops):
         N_TRAIN = 1000#1000 # train on all seqs
         N_TEST = 1000#1000#pow(2,SEQ_LEN)
         solved_problem_count = 0
+    elif (task_name=='parity_length_noisy_longer_remainder'):
+        SEQ_LEN = 12
+        N_INPUT = 1           # number of input units
+        N_CLASSES = 1         # number of output units
+        N_TRAIN = pow(2,SEQ_LEN) #1000 # train on all seqs
+        N_TEST = pow(2,SEQ_LEN)#1000#pow(2,SEQ_LEN)
     elif (task_name=='majority'):
         SEQ_LEN = 12
         N_INPUT = 1           # number of input units
         N_CLASSES = 1         # number of output units
-        N_TRAIN = 64 
-        N_TEST = 4096-64
+        N_TRAIN = 32
+        N_TEST = 4096-32
     elif (task_name=='reber'):
         SEQ_LEN = 20
         N_INPUT = 7 # B E P S T V X
         N_CLASSES = 1
         N_TRAIN = 200
-        N_TEST = 2000
+        N_TEST = 400
     elif (task_name=='kazakov'):
         SEQ_LEN = 20
         N_INPUT = 5

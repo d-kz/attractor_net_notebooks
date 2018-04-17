@@ -85,14 +85,18 @@ def task_accuracy(Y, Y_, ops):
     return accuracy
 
 
-def project_init(in_size, out_size):
-    with tf.variable_scope("TASK_WEIGHTS"):
+def project_init(in_size, out_size, reuse):
+    if reuse:
+        scope = tf.variable_scope("TASK_WEIGHTS", reuse=True)
+    else:
+        scope = tf.variable_scope("TASK_WEIGHTS")
+    with scope:
         b_out = mozer_get_variable("b_out", [out_size])
         W_out = mozer_get_variable("W_out", [in_size, out_size])
     return W_out, b_out
 
-def project_into_output(Y, output, in_size, out_size, ops):
-    W_out, b_out = project_init(in_size, out_size)
+def project_into_output(Y, output, in_size, out_size, ops,reuse=False):
+    W_out, b_out = project_init(in_size, out_size, reuse)
 
     batch_size = tf.shape(Y)[0]
     if ops['prediction_type'] == 'seq':
@@ -264,13 +268,17 @@ def attractor_net_loss_function(attractor_tgt_net, attr_net, regularization_stre
     return attr_loss, input_bias
 
 
-def attractor_net_init(N_HIDDEN, ATTRACTOR_TYPE, N_H_HIDDEN, suffix=''):
+def attractor_net_init(N_HIDDEN, ATTRACTOR_TYPE, N_H_HIDDEN, suffix='', reuse=False):
     # attr net weights
     # NOTE: i tried setting attractor_W = attractor_b = 0 and attractor_scale=1.0
     # which is the default "no attractor" model, but that doesn't learn as well as
 
     with tf.variable_scope("ATTRACTOR_WEIGHTS"):
-        with tf.variable_scope(suffix):
+        if reuse:
+            scope = tf.variable_scope(suffix, reuse=True)
+        else:
+            scope = tf.variable_scope(suffix)
+        with scope:
             attr_net = {}
             if ATTRACTOR_TYPE == 'projection2' or ATTRACTOR_TYPE == "projection3":  # attractor net 2
                 attr_net['W_in'] = tf.get_variable("attractor_W_in", initializer=tf.eye(N_HIDDEN, num_columns=N_H_HIDDEN) +
@@ -288,7 +296,12 @@ def attractor_net_init(N_HIDDEN, ATTRACTOR_TYPE, N_H_HIDDEN, suffix=''):
                     'b': tf.get_variable("attractor_b", initializer=.01 * tf.random_normal([N_HIDDEN]))
                 }
             attr_net['scale'] = tf.get_variable("attractor_scale", initializer=.01 * tf.ones([1]))
-    with tf.variable_scope(suffix):
+
+    if reuse:
+        scope = tf.variable_scope(suffix, reuse=True)
+    else:
+        scope = tf.variable_scope(suffix)
+    with scope:
         # if ATTR_WEIGHT_CONSTRAINTS:  # symmetric + nonnegative diagonal weight matrix
         Wdiag = tf.matrix_band_part(attr_net['W'], 0, 0)  # diagonal
         Wlowdiag = tf.matrix_band_part(attr_net['W'], -1, 0) - Wdiag  # lower diagonal
@@ -380,10 +393,14 @@ def GRU(X, ops, params):
 
 ######### BEGIN TANH RNN ########################################################
 
-def RNN_tanh_params_init(ops, suffix=''):
+def RNN_tanh_params_init(ops, suffix='', reuse=False):
     N_INPUT = ops['in']
     N_HIDDEN = ops['hid']
-    with tf.variable_scope("TASK_WEIGHTS"):
+    if reuse:
+        scope = tf.variable_scope("TASK_WEIGHTS", reuse=True)
+    else:
+        scope = tf.variable_scope("TASK_WEIGHTS")
+    with scope:
         with tf.variable_scope(suffix):
             W = {'in': mozer_get_variable("W_in", [N_INPUT, N_HIDDEN]),
                  'rec': mozer_get_variable("W_rec", [N_HIDDEN, N_HIDDEN])
@@ -411,10 +428,10 @@ def RNN_tanh(X, ops, params):
             x = input_vars
 
             # update the hidden state but don't apply the squashing function
-            h = tf.matmul(h_prev, W['rec']) + tf.matmul(x, W['in']) + b['rec']
+            h_net = tf.matmul(h_prev, W['rec']) + tf.matmul(x, W['in']) + b['rec']
 
             # insert attractor net
-            h_net = tf.atanh(tf.minimum(.99999, tf.maximum(-.99999, h)))
+            # h_net = tf.atanh(tf.minimum(.99999, tf.maximum(-.99999, h)))
             h_cleaned, h_attractor_collection = run_attractor_net(h_net, attr_net, ops)
 
             return [h_cleaned, h_net, h_attractor_collection]

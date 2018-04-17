@@ -116,7 +116,7 @@ class GRU_attractor(object):
 
 
 class TANH_attractor(object):
-    def __init__(self, ops, inputs, direction=None, suffix=''):
+    def __init__(self, ops, inputs, direction=None, suffix='', reuse=False):
         """
         inputs['mask'] - has to be 1 or 0
         """
@@ -126,8 +126,8 @@ class TANH_attractor(object):
         #
         # GRAPH structuring
         #
-        params = RNN_tanh_params_init(ops, suffix)
-        attr_net = attractor_net_init(ops['hid'], ops['attractor_dynamics'], ops['h_hid'], suffix)
+        params = RNN_tanh_params_init(ops, suffix, reuse)
+        attr_net = attractor_net_init(ops['hid'], ops['attractor_dynamics'], ops['h_hid'], suffix, reuse)
         params['attr_net'] = attr_net
 
         #
@@ -182,7 +182,7 @@ class TANH_attractor(object):
         attr_net_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS" + '/{}'.format(suffix))
         # Define optimizer for attractor net task
         attr_train_op  = None
-        if (ops['n_attractor_iterations'] > 0):
+        if (ops['n_attractor_iterations'] > 0) and not reuse:
             optimizer_attr = tf.train.AdamOptimizer(learning_rate=ops['lrate'])
             attr_train_op = optimizer_attr.minimize(attr_loss_op, var_list=attr_net_parameters)
 

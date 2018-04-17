@@ -77,7 +77,8 @@ def get_model_type_str(ops, N_TRAIN, N_TEST, SEQ_LEN):
     return comment
 
 def get_training_progress_comment(epoch, ploss, aloss, ploss_val, val_acc, train_acc, test_acc, entropy, entropy_test=''):
-    progress_comment = "epoch=" + str(epoch - 1) + "; Loss Pred=" + \
+    try:
+        progress_comment = "epoch=" + str(epoch - 1) + "; Loss Pred=" + \
                        "{:.4f}".format(ploss) + \
                        "; Val Loss={:.4f}".format(ploss_val) + \
                        "; Val Acc={:.4f}".format(val_acc) + \
@@ -88,6 +89,18 @@ def get_training_progress_comment(epoch, ploss, aloss, ploss_val, val_acc, train
                        "{}".format(entropy) + \
                         "; Entropy_Test=" + \
                         "{}".format(entropy_test) + "\n"
+    except:
+        progress_comment = "epoch=" + str(epoch - 1) + "; Loss Pred=" + \
+                       "{:.4f}".format(ploss) + \
+                       "; Val Loss={:.4f}".format(ploss_val) + \
+                       "; Val Acc={:.4f}".format(val_acc) + \
+                       "; Loss Att=" + \
+                       "{}".format(aloss) + "; Train Acc=" + \
+                       "{:.3f}".format(train_acc) + "; Test Acc=" + \
+                       "{}".format(str(test_acc)) + "; Entropy=" + \
+                       "{}".format(entropy) + \
+                       "; Entropy_Test=" + \
+                       "{}".format(entropy_test) + "\n"
     return progress_comment
 
 #################
