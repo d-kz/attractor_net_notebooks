@@ -36,7 +36,6 @@ def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
     # merge all
     for i in range(len(input_tensors)):
         output = np.array(collect_outputs[i])
-        # import pdb;pdb.set_trace()
         if len(output[0].flatten()) > 1: # for actual tensor collections, merge batches
             output = np.concatenate(output, axis=0)
         else: # for just values, find the average
@@ -61,6 +60,10 @@ def task_loss(Y, Y_, ops):
         loss_per_example_sum = tf.reduce_sum(loss_per_example_per_step, reduction_indices=[1])
         loss_per_example_average = loss_per_example_sum/tf.reduce_sum(mask, axis=[1])
         pred_loss_op = tf.reduce_mean(loss_per_example_average, name="loss")
+    elif ops['prediction_type'] == 'final_class':
+        Y_flat = tf.squeeze(Y, axis=1) #flatten the final dimension of 1
+        fake_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=Y_, labels=Y_flat)
+        pred_loss_op = tf.reduce_mean(fake_loss, name="loss")
     else: # MSE for singular output
         pred_loss_op = tf.reduce_mean(tf.pow(Y_ - tf.cast(Y, 'float'), 2) / .25)
     return pred_loss_op
@@ -79,6 +82,10 @@ def task_accuracy(Y, Y_, ops):
         accuracy_masked = fake_accuracy * mask
         accuracy_per_example = tf.reduce_sum(accuracy_masked, 1) / tf.reduce_sum(mask, axis=[1])
         accuracy = tf.reduce_mean(accuracy_per_example, name="valid_accuracy")
+    elif ops['prediction_type'] == 'final_class':
+        Y_flat = tf.squeeze(Y, axis=1)
+        correct_pred = tf.equal(tf.cast(tf.argmax(Y_, axis=1), tf.int32), tf.cast(Y_flat, tf.int32))
+        accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
     else:
         correct_pred = tf.equal(tf.cast(tf.round(Y_), tf.int32), tf.cast(Y, tf.int32))
         accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))

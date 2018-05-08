@@ -29,7 +29,10 @@ def load_pretrained_embeddings(embedding_path, maps, ops):
             words_not_found.append(word)
 
     print("{} words not found in pretrained embeddings: {}".format(len(words_not_found), words_not_found))
-    return embeddings
+    if ops['trainable_logic_symbols'] > 0:
+        # take all but first *n* symbols, since later we'll concat them
+        embeddings = embeddings[ops['trainable_logic_symbols']:, :]
+    return embeddings, words_not_found
 
 
 ################ get_batches ############################################################

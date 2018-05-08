@@ -91,7 +91,7 @@ class GRU_attractor(object):
         self.h_net_seq_flat = h_net_seq # pure cell ouptut (before attractor was applied)
         self.h_attractor_collection = h_attractor_collection
         self.h_clean_seq_flat = h_clean_seq
-        if ops['prediction_type'] == 'final' and ops['masking']:
+        if 'final' in ops['prediction_type'] and ops['masking']:
             # if we only need the final output and the sequences required masking do this:
 
             # forward: get index right before first zero element
@@ -192,7 +192,7 @@ class TANH_attractor(object):
         self.h_net_seq_flat = h_net_seq # pure cell ouptut (before attractor was applied)
         self.h_attractor_collection = h_attractor_collection
         self.h_clean_seq_flat = h_clean_seq
-        if ops['prediction_type'] == 'final' and ops['masking']:
+        if 'final' in ops['prediction_type'] and ops['masking']:
             # if we only need the final output and the sequences required masking do this:
 
             # forward: get index right before first zero element
