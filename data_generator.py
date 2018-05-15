@@ -149,7 +149,7 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
         Y_test = Y[train_cut:, :]
     elif (task == "video_classification"):
         with open('data/video_classification/data.pickle', 'rb') as handle:
-            dataset = pickle.load(handle)
+            dataset = json.load(handle)
             X_train, Y_train, X_test, Y_test = np.array(dataset['X_train']), np.array(dataset['Y_train']), np.array(dataset['X_test']), np.array(dataset['Y_test'])
         Y_test = np.expand_dims(Y_test, axis=1)
         Y_train = np.expand_dims(Y_train, axis=1)
@@ -157,6 +157,25 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
         with open('data/msnbc/data.pickle', 'rb') as handle:
             dataset = pickle.load(handle)
             X_train, Y_train, X_test, Y_test = np.array(dataset['X_train']), np.array(dataset['Y_train']), np.array(dataset['X_test']), np.array(dataset['Y_test'])
+
+        X_train_pad = np.zeros([len(X_train), 40])
+        Y_train_pad = np.zeros([len(X_train), 40])
+        for i, x in enumerate(X_train):
+            X_train_pad[i, :len(x)] = x
+        for i, x in enumerate(Y_train):
+            Y_train_pad[i, :len(x)] = x
+        X_train = X_train_pad.astype("int64")
+        Y_train = Y_train_pad.astype("int64")
+
+        X_test_pad = np.zeros([len(X_test), 40])
+        Y_test_pad = np.zeros([len(X_test), 40])
+        for i, x in enumerate(X_test):
+            X_test_pad[i, :len(x)] = x
+        for i, x in enumerate(Y_test):
+            Y_test_pad[i, :len(x)] = x
+        X_test = X_test_pad.astype("int64")
+        Y_test = Y_test_pad.astype("int64")
+
     return [X_train, Y_train, X_test, Y_test, X_val, Y_val, maps]
 
 ################ generate_parity_majority_sequences #####################################
@@ -384,10 +403,10 @@ def pick_task(task_name, ops):
         N_TRAIN = 0
         ops['seq_len'] = SEQ_LEN
     elif (task_name == "msnbc"):
-        N_INPUT = 1 # word embed
+        N_INPUT = 18 # word embed
         SEQ_LEN = 40
-        N_CLASSES = 17  # output is singular since only 2 classes.
-        N_TEST = 10000
+        N_CLASSES = 18  # output is singular since only 2 classes.
+        N_TEST = 0
         N_VALID = 0
         N_TRAIN = 0
         ops['seq_len'] = SEQ_LEN
