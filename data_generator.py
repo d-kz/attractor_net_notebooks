@@ -147,6 +147,16 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
 
         X_test = X[train_cut:, :]
         Y_test = Y[train_cut:, :]
+    elif (task == "video_classification"):
+        with open('data/video_classification/data.pickle', 'rb') as handle:
+            dataset = pickle.load(handle)
+            X_train, Y_train, X_test, Y_test = np.array(dataset['X_train']), np.array(dataset['Y_train']), np.array(dataset['X_test']), np.array(dataset['Y_test'])
+        Y_test = np.expand_dims(Y_test, axis=1)
+        Y_train = np.expand_dims(Y_train, axis=1)
+    elif (task == "msnbc"):
+        with open('data/msnbc/data.pickle', 'rb') as handle:
+            dataset = pickle.load(handle)
+            X_train, Y_train, X_test, Y_test = np.array(dataset['X_train']), np.array(dataset['Y_train']), np.array(dataset['X_test']), np.array(dataset['Y_test'])
     return [X_train, Y_train, X_test, Y_test, X_val, Y_val, maps]
 
 ################ generate_parity_majority_sequences #####################################
@@ -179,7 +189,7 @@ def generate_parity_majority_sequences(N, count, task):
 def get_pos_brown_dataset(directory, partition):
     with open(directory + "/data.pickle", 'rb') as handle:
         dataset = pickle.load(handle)
-        dataset_X, dataset_Y = np.array(dataset['X']).astype(_int), np.array(dataset['Y']).astype(int)
+        dataset_X, dataset_Y = np.array(dataset['X']).astype(int), np.array(dataset['Y']).astype(int)
 
     map_names = ['id2tag', "tag2id", "id2word", "word2id", "id2prior"]
     maps = {map_name: [] for map_name in map_names}
@@ -364,6 +374,22 @@ def pick_task(task_name, ops):
         N_TEST = int(total * 0.20)
         N_VALID = int(total * 0.20)
         N_TRAIN = int(total - (N_TEST + N_VALID))
+        ops['seq_len'] = SEQ_LEN
+    elif (task_name == "video_classification"):
+        N_INPUT = 2048 # word embed
+        SEQ_LEN = 40
+        N_CLASSES = 2  # output is singular since only 2 classes.
+        N_TEST = 0
+        N_VALID = 0
+        N_TRAIN = 0
+        ops['seq_len'] = SEQ_LEN
+    elif (task_name == "msnbc"):
+        N_INPUT = 1 # word embed
+        SEQ_LEN = 40
+        N_CLASSES = 17  # output is singular since only 2 classes.
+        N_TEST = 10000
+        N_VALID = 0
+        N_TRAIN = 0
         ops['seq_len'] = SEQ_LEN
     else:
         print('Invalid task: ',task_name)
