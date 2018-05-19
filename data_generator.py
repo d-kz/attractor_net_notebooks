@@ -5,6 +5,7 @@ import pickle
 import random
 import gzip
 import sys
+import json
 if (sys.version_info > (3, 0)):
     import pickle as pkl
 else:
@@ -208,7 +209,7 @@ def generate_parity_majority_sequences(N, count, task):
 def get_pos_brown_dataset(directory, partition):
     with open(directory + "/data.pickle", 'rb') as handle:
         dataset = pickle.load(handle)
-        dataset_X, dataset_Y = np.array(dataset['X']).astype(int), np.array(dataset['Y']).astype(int)
+        dataset_X, dataset_Y = dataset['X'], dataset['Y']
 
     map_names = ['id2tag', "tag2id", "id2word", "word2id", "id2prior"]
     maps = {map_name: [] for map_name in map_names}
@@ -321,7 +322,7 @@ def pick_task(task_name, ops):
         N_TEST = 1000#1000#pow(2,SEQ_LEN)
         solved_problem_count = 0
     elif (task_name=='parity_length_noisy_longer_remainder'):
-        SEQ_LEN = 12
+        SEQ_LEN = 10
         N_INPUT = 1           # number of input units
         N_CLASSES = 1         # number of output units
         N_TRAIN = pow(2,SEQ_LEN) #1000 # train on all seqs

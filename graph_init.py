@@ -120,7 +120,14 @@ class TANH_attractor(object):
         """
         inputs['mask'] - has to be 1 or 0
         """
-        X, mask_phldr, attractor_tgt_net = inputs['X'], inputs['mask'], inputs['attractor_tgt_net'] # tensor inputs
+        if direction == 'forward':
+            X, mask_phldr, attractor_tgt_net = inputs['X'], inputs['mask'], inputs['attractor_tgt_net'] # tensor inputs
+        elif direction == 'backward':
+            # Input is always expected as X = tf.placeholder("float", [None, SEQ_LEN, N_INPUT])
+            #                             Y = tf.placeholder("float", [None, N_CLASSES=1]), OR [None, SEQ_LEN])
+            # attractor_tgt_net is produced by the network itself, so we don't reverse it.
+            X, mask_phldr, attractor_tgt_net = tf.reverse(inputs['X'], axis=[1]), tf.reverse(inputs['mask'], axis=[1]), \
+                                      inputs['attractor_tgt_net']  # tensor inputs
         batch_size = tf.shape(X)[0]
 
         #

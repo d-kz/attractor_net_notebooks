@@ -111,13 +111,13 @@ def project_into_output(Y, output, in_size, out_size, ops,reuse=False):
         output_trans = tf.transpose(output, [1, 0, 2])  # [seq_len, batch_size, n_hid] -> [batch_size, seq_len, n_hid]
         output_trans = tf.reshape(output_trans,
                                   [-1, in_size])  # [batch_size, seq_len, n_hid]-> [-1, n_hid]
-        out = tf.nn.sigmoid(tf.matmul(output_trans, W_out) + b_out)
+        out = tf.matmul(output_trans, W_out) + b_out
         Y_ = tf.reshape(out, [batch_size, ops['seq_len'], out_size])
     elif ops['masking']:
-        Y_ = tf.nn.sigmoid(tf.matmul(output, W_out) + b_out)
+        Y_ = tf.matmul(output, W_out) + b_out
     else:
         # without masking we had no need to bother with dimensions, so let's just leave it as is. (sorry)
-        Y_ = tf.nn.sigmoid(tf.matmul(output[-1], W_out) + b_out)
+        Y_ = tf.matmul(output[-1], W_out) + b_out
     return Y_
 
 
