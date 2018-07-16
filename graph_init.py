@@ -142,7 +142,7 @@ class TANH_attractor(object):
         #
         if ops['masking']:
             # pass in the embedding instead of direct index tensor
-            [h_net_seq, h_attractor_collection, h_clean_seq] = GRU(X, ops, params)
+            [h_net_seq, h_attractor_collection, h_clean_seq] = RNN_tanh(X, ops, params)
             h_clean_seq_output = h_clean_seq # store before reshaping happens
             # mask out irrelevant h:
             # since all hs are (seq_len, batch, h_hid), transpose mask
