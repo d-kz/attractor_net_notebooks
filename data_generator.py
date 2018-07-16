@@ -149,7 +149,7 @@ def generate_examples(seq_len, n_train, n_test, input_noise_level, task, ops):
         X_test = X[train_cut:, :]
         Y_test = Y[train_cut:, :]
     elif (task == "video_classification"):
-        with open('data/video_classification/data.pickle', 'rb') as handle:
+        with open('data/video_classification/data_class25.pickle', 'rb') as handle:
             dataset = json.load(handle)
             X_train, Y_train, X_test, Y_test = np.array(dataset['X_train']), np.array(dataset['Y_train']), np.array(dataset['X_test']), np.array(dataset['Y_test'])
         Y_test = np.expand_dims(Y_test, axis=1)
@@ -308,11 +308,11 @@ def get_ner_german_dataset(directory):
 
 def pick_task(task_name, ops):
     if (task_name=='parity'):
-        SEQ_LEN = 5
+        SEQ_LEN = 10
         N_INPUT = 1           # number of input units
         N_CLASSES = 1         # number of output units
-        N_TRAIN = pow(2,SEQ_LEN) # train on all seqs
-        N_TEST = pow(2,SEQ_LEN)
+        N_TRAIN = 256 # train on all seqs
+        N_TEST = 768
         solved_problem_count = 0
     elif (task_name=='parity_length'):
         SEQ_LEN = 12
@@ -398,7 +398,7 @@ def pick_task(task_name, ops):
     elif (task_name == "video_classification"):
         N_INPUT = 2048 # word embed
         SEQ_LEN = 40
-        N_CLASSES = 2  # output is singular since only 2 classes.
+        N_CLASSES = 25  # output is singular since only 2 classes.
         N_TEST = 0
         N_VALID = 0
         N_TRAIN = 0
