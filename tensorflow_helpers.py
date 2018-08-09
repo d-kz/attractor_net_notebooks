@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from helper_functions import get_batches
+from helper_functions import get_batches, load_pretrained_embeddings
 
 
 #
@@ -50,6 +50,88 @@ def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
 # GRAPH HELPER FUNCTIONS
 #
 ######################################################################################
+def init_placeholders(ops):
+    SEQ_LEN = ops['seq_len']
+    N_CLASSES = ops['n_classes']
+    N_HIDDEN = ops['hid']
+    N_INPUT = ops['in']
+    if 'pos' in ops['problem_type']:
+        # X will be looked up in the embedding table, so the last dimension is just a number
+        X = tf.placeholder("int64", [None, SEQ_LEN], name='X')
+        # last dimension is left singular, tensorflow will expect it to be an id number, not 1-hot embed
+        Y = tf.placeholder("int64", [None, SEQ_LEN], name='Y')
+    elif ops['problem_type'] == 'sentiment_imdb':
+         # X will be looked up in the embedding table, so the last dimension is just a number
+        X = tf.placeholder("int64", [None, SEQ_LEN], name='X')
+        Y = tf.placeholder("int64", [None, N_CLASSES], name='Y')
+    elif ops['problem_type'] == 'topic_classification':
+         # X will be looked up in the embedding table, so the last dimension is just a number
+        X = tf.placeholder("int64", [None, SEQ_LEN], name='X')
+        Y = tf.placeholder("int64", [None, 1], name='Y')
+    elif ops['problem_type'] == 'ner_german':
+        X = tf.placeholder("float", [None, SEQ_LEN, N_INPUT])
+        Y = tf.placeholder("int64", [None, SEQ_LEN])
+    else:  # single output
+        X = tf.placeholder("float", [None, SEQ_LEN, N_INPUT])
+        Y = tf.placeholder("int64", [None, N_CLASSES])
+    attractor_tgt_net = tf.placeholder("float", [None, N_HIDDEN], name='attractor_tgt')
+    return X, Y, attractor_tgt_net
+
+
+def init_embedding_lookup(ops, X, maps=None):
+    # Embedding matrix initialization
+    if ops['load_word_embeddings']:
+        embeddings_loaded, _ = load_pretrained_embeddings('data/glove.6B.{}d.txt'.format(ops['embedding_size']),
+                                                          maps, ops)
+        if ops['trainable_logic_symbols'] > 0:
+            with tf.variable_scope("TASK_WEIGHTS"):
+                symbols_embedding = tf.get_variable("symb_embedding",
+                                                    initializer=tf.truncated_normal_initializer(stddev=0.05),
+                                                    shape=[ops['trainable_logic_symbols'], ops['embedding_size']],
+                                                    dtype=tf.float32,
+                                                    trainable=True)
+
+        word_embedding = tf.get_variable("embedding",
+                                         initializer=embeddings_loaded,
+                                         dtype=tf.float32,
+                                         trainable=ops['train_word_embeddings'])
+        if ops['trainable_logic_symbols'] > 0:
+            embedding = tf.concat([symbols_embedding, word_embedding], axis=0)
+        else:
+            embedding = word_embedding
+    else:  # initialize randomly
+        embedding = tf.get_variable("embedding",
+                                    initializer=tf.truncated_normal_initializer(stddev=0.05),
+                                    shape=[ops['vocab_size'], ops['embedding_size']],
+                                    dtype=tf.float32,
+                                    trainable=ops['train_word_embeddings'])
+    embed_lookup = tf.nn.embedding_lookup(embedding, X)
+
+    # load priors information
+    if ops['input_type'] == 'prior' or ops['input_type'] == 'embed&prior':
+        id2prior = maps['id2prior']
+        word2id = maps['word2id']
+        priors = np.zeros([len(id2prior), len(id2prior[0])]).astype("float32")
+        for id, prior in id2prior.items():
+            priors[id] = prior
+        priors_op = tf.get_variable("priors",
+                                    initializer=priors,
+                                    dtype=tf.float32,
+                                    trainable=False)
+        prior_lookup = tf.nn.embedding_lookup(priors_op, X)
+
+    if ops['input_type'] == 'embed':
+        embed = embed_lookup
+    elif ops['input_type'] == 'prior':
+        embed = prior_lookup
+    elif ops['input_type'] == 'embed&prior':
+        embed = tf.concat([embed_lookup, prior_lookup], axis=2)
+    return embed
+
+
+
+
+
 def task_loss(Y, Y_, ops):
     if ops['prediction_type'] == 'seq':# cross entropy loss for sequence tagging
         # Y_: (batch_size, seq_len, n_classes), Y: (batch, seq_len)
@@ -65,6 +147,8 @@ def task_loss(Y, Y_, ops):
         fake_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=Y_, labels=Y_flat)
         pred_loss_op = tf.reduce_mean(fake_loss, name="loss")
     else: # MSE for singular output
+        # WARNING: sigmoid activation is be removed before passing to logit loss, but needed for MSE
+        Y_ = tf.sigmoid(Y_)
         pred_loss_op = tf.reduce_mean(tf.pow(Y_ - tf.cast(Y, 'float'), 2) / .25)
     return pred_loss_op
 
@@ -87,6 +171,8 @@ def task_accuracy(Y, Y_, ops):
         correct_pred = tf.equal(tf.cast(tf.argmax(Y_, axis=1), tf.int32), tf.cast(Y_flat, tf.int32))
         accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
     else:
+        # WARNING: sigmoid activation is be removed before passing to logit loss, but needed for MSE
+        Y_ = tf.sigmoid(Y_)
         correct_pred = tf.equal(tf.cast(tf.round(Y_), tf.int32), tf.cast(Y, tf.int32))
         accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
     return accuracy

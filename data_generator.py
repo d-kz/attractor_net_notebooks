@@ -185,6 +185,7 @@ def generate_parity_majority_sequences(N, count, task):
     Generate :count: sequences of length :N:.
     If odd # of 1's -> output 1
     else -> output 0
+    If count >= 2**N (possible sequences exceeded), then generate the dataset with permutation.
     """
     parity = lambda x: 1 if (x % 2 == 1) else 0
     majority = lambda x: 1 if x > N/2 else 0
@@ -328,11 +329,11 @@ def pick_task(task_name, ops):
         N_TRAIN = pow(2,SEQ_LEN) #1000 # train on all seqs
         N_TEST = pow(2,SEQ_LEN)#1000#pow(2,SEQ_LEN)
     elif (task_name=='majority'):
-        SEQ_LEN = 12
+        SEQ_LEN = 10
         N_INPUT = 1           # number of input units
         N_CLASSES = 1         # number of output units
-        N_TRAIN = 32
-        N_TEST = 4096-32
+        N_TRAIN = 256
+        N_TEST = 768
     elif (task_name=='reber'):
         SEQ_LEN = 20
         N_INPUT = 7 # B E P S T V X
