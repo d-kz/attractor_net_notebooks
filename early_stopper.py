@@ -24,3 +24,12 @@ class EarlyStopper():
             return True
         else:
             False
+
+
+# es = EarlyStopper(2, 1)
+# for i in range(1,10):
+#     es.update(i, i, i)
+#     print i, es.patience
+#
+#     if es.patience_ran_out():
+#         print "STOPPED"

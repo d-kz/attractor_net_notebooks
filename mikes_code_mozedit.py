@@ -849,15 +849,17 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
                             sess.run(attr_loss, feed_dict={attractor_tgt_net: batch_hid_vals}))
                     aloss = np.sum([lengths[i]*a_loss_val[i] for i in range(len(lengths))]) / np.sum(lengths) # weighted_sum_of_losses / sum_of_weights
 
-		    early_stopper.update(ploss_val, train_acc, test1_acc)
-                    print("  patience %3d LossPredValBest %.4f LossPredValCur %.4f TestAccBest %.4f" % (early_stopper.patience, early_stopper.best_val_err, ploss_val, early_stopper.best_test_acc))
-                    if 0: # DEBUG 
-			if early_stopper.patience_ran_out():
-			    print_into_log(LOG_DIRECTORY, "STOPPED EARLY AT {}".format(epoch))
-			    break
-		    if (train_acc >= best_train_acc):
-			best_train_acc = train_acc
-			best_test1_acc = test1_acc
+                    early_stopper.update(ploss_val, train_acc, test1_acc)
+                    print("  patience %3d LossPredValBest %.4f LossPredValCur %.4f TestAccBest %.4f" % (
+                    early_stopper.patience, early_stopper.best_val_err, ploss_val, early_stopper.best_test_acc))
+
+                    if early_stopper.patience_ran_out():
+                        print_into_log(LOG_DIRECTORY, "STOPPED EARLY AT {}".format(epoch))
+                        break
+                    if (train_acc >= best_train_acc):
+                        best_train_acc = train_acc
+                        best_test1_acc = test1_acc
+
 
                 else: # task is not video classification
                     ploss, train_acc, hid_vals = sess.run([pred_loss, accuracy, h_net_seq],
