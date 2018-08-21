@@ -16,83 +16,17 @@ import fsm
 import random
 import math
 import json
-#import symmetry
+import symmetry
+import pickle
 from sklearn.cross_validation import StratifiedShuffleSplit
 
 import datetime
-from helper_functions import print_into_log
-
-################ get_batches ############################################################
-
-def get_batches(num, data, labels):
-    '''
-    Return a total of `num` random samples and labels.
-    '''
-    idx = np.arange(0, len(data))
-    np.random.shuffle(idx)
-    batches = []
-    while len(idx) > 0:
-        cur_idx = idx[:min(num, len(idx))]
-        data_shuffle = [data[i] for i in cur_idx]
-        labels_shuffle = [labels[i] for i in cur_idx]
-        batches.append((np.asarray(data_shuffle), np.asarray(labels_shuffle)))
-        idx = idx[num:]
-    return batches
-
-################ batch_tensor_collect ###################################################
-
-def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
-    batches = get_batches(batch_size, X_data, Y_data)
-  
-    collect_outputs = [[] for i in range(len(input_tensors))]
-    actual_batch_sizes = []
-    for (batch_x, batch_y) in batches:
-        outputs = sess.run(input_tensors, feed_dict={X: batch_x, Y: batch_y})
-        actual_batch_sizes.append(batch_y.shape[0])
-        for i, output in enumerate(outputs):
-            collect_outputs[i].append(output)
-
-    # merge all
-    for i in range(len(collect_outputs)):
-        output = np.array(collect_outputs[i])
-        #if len(output[0].flatten()) > 1: # for actual tensor collections, merge batches
-        #    output = np.concatenate(output, axis=0)
-        #else: # for just values, find the example-weighted average
-        if len(output[0].flatten()) == 1: # find example weighted average of values
-            output = (np.sum(output * np.asarray(actual_batch_sizes,dtype=float)) / 
-                      np.sum(np.asarray(actual_batch_sizes,dtype=float)))
-        collect_outputs[i] = output
-
-    if len(collect_outputs)==1:
-        collect_outputs = collect_outputs[0]
-    return collect_outputs
-
-################ EarlyStopper class #####################################################
-
-class EarlyStopper():
-    def __init__(self, patience_max, disp_epoch, min_delta = 0.00):
-        self.best_val_err = 1e10
-        self.patience = 0  # our patience
-        self.patience_max = patience_max
-        self.display_epoch = disp_epoch
-        self.min_delta = min_delta
-        self.best_train_acc = 0.
-        self.best_test_acc = 0.
-
-    def update(self, current_val_err, current_train_acc, current_test_acc):
-        if self.best_val_err > current_val_err:
-            self.best_val_err = current_val_err
-            self.best_test_acc = current_test_acc
-            self.best_train_acc = current_train_acc
-            self.patience = 0
-        elif abs(self.best_val_err - current_val_err) > self.min_delta:
-            self.patience += 1
-
-    def patience_ran_out(self):
-        if self.patience*self.display_epoch > self.patience_max:
-            return True
-        else:
-            False
+from helper_functions import print_into_log, get_batches
+from tensorflow_helpers import batch_tensor_collect, init_embedding_lookup, init_placeholders, project_into_output, \
+                                task_loss, task_accuracy
+from early_stopper import EarlyStopper
+from data_generator import get_pos_brown_dataset, generate_examples
+from graph_init import GRU_attractor, TANH_attractor
 
 
 ############# read_in_dataset #################################################
@@ -317,6 +251,15 @@ elif TASK == 'video_classification':
     N_TEST = 0
     N_VALID = 0
     N_TRAIN = 2228 #for 25 classes
+elif TASK =='pos':
+    with open("data/corpus_brown/data_params.pickle", 'rb') as handle:
+        dataset_params = pickle.load(handle)
+    SEQ_LEN = dataset_params['seq_len_max'] #length 50 cutoff preserves 98% of data
+    N_INPUT = 100 # embedding vector size
+    N_CLASSES = dataset_params['n_classes'] # tags size
+    total_examples = dataset_params['total_examples'] # total sequences
+    N_TEST = 17000 # 30% of the whole dataset
+    N_TRAIN = total_examples - N_TEST
 else:
     print('Invalid task: ', TASK)
     quit()
@@ -334,15 +277,31 @@ LRATE_WT_PENALTY = float(BATCH_SIZE) / float(N_TRAIN) * args.lrate_wt_penalty
 
 ################ GLOBAL VARIABLES #######################################################
 
-# prediction input
-X = tf.placeholder("float", [None, SEQ_LEN, N_INPUT], name='X')
-# prediction output
-if TASK == 'video_classification':
-    Y = tf.placeholder("int32", [None, 1], name='Y')
-else:
-    Y = tf.placeholder("float", [None, N_CLASSES], name='Y')
-# attr net target
-attractor_tgt_net = tf.placeholder("float", [None, N_HIDDEN], name='attractor_tgt_net')
+# # prediction input
+# X = tf.placeholder("float", [None, SEQ_LEN, N_INPUT], name='X')
+# # prediction output
+# if TASK == 'video_classification':
+#     Y = tf.placeholder("int32", [None, 1], name='Y')
+# else:
+#     Y = tf.placeholder("float", [None, N_CLASSES], name='Y')
+#
+#
+# # attr net target
+# attractor_tgt_net = tf.placeholder("float", [None, N_HIDDEN], name='attractor_tgt_net')
+
+# PLACEHOLDERS
+X, Y, attractor_tgt_net = init_placeholders({'seq_len':SEQ_LEN, 'n_classes': N_CLASSES, 'hid': N_HIDDEN, 'in': N_INPUT, 'problem_type': TASK})
+
+# EMBEDDING
+maps = None
+if TASK == 'pos':
+    _, _, maps = get_pos_brown_dataset('data/corpus_brown')
+    embed = init_embedding_lookup({'load_word_embeddings': True,
+                                    'trainable_logic_symbols': 0,
+                                    'train_word_embeddings': False,
+                                    'input_type': 'embed',
+                                    'embedding_size': 100}, X, maps)
+
 
 
 # attr net weights
@@ -382,7 +341,7 @@ def generate_examples(dataset_part = 1.0):
     """
     global X_all, Y_all #global dataset vars to avoid reloading
 
-    X_val, Y_val, X_test2, Y_test2 = None, None, None, None
+    X_val, Y_val, X_test2, Y_test2, maps = None, None, None, None, None
     if (TASK == 'parity'):
         X_all, Y_all = generate_parity_majority_sequences(SEQ_LEN, pow(2, SEQ_LEN))
         # X_all has shape  (2^seq_len * seq_len * 1)
@@ -456,8 +415,42 @@ def generate_examples(dataset_part = 1.0):
         # this was out check that there are no duplicates (there are 10 out of 3093, which are just coincidentally the same image responses)
         # counts = np.unique(np.concatenate([X_val, X_test1, X_train], axis=0), axis=0, return_counts=True)[1]
         # print np.unique(counts, return_counts=True)
+
+    elif (TASK == "pos"):
+        dataset_X, dataset_Y, maps = get_pos_brown_dataset('data/corpus_brown')
+        # trip sequences to seq_len
+        # dataset_X = np.array([cutoff_seq(x) for x in dataset_X], ops['seq_len'])
+        # dataset_Y = np.array([cutoff_seq(x) for x in dataset_Y], ops['seq_len'])
+
+        # reshuffle
+        indeces = range(dataset_X.shape[0])
+        random.shuffle(indeces)
+        dataset_X = dataset_X[indeces]
+        dataset_Y = dataset_Y[indeces]
+
+        max_len = np.max([len(x) for x in dataset_X])
+        # pad all sequences with zeros at the end
+        X = np.zeros([len(dataset_X), max_len])
+        Y = np.zeros([len(dataset_X), max_len])
+        for i,x in enumerate(dataset_X):
+            X[i,:len(x)] = x
+        for i,x in enumerate(dataset_Y):
+            Y[i,:len(x)] = x
+        X = X.astype("int64")
+        Y = Y.astype("int64")
+
+        X_test1 = X[0:N_TEST,:]
+        Y_test1 = Y[0:N_TEST,:]
+        X_train = X[N_TEST:,:]
+        Y_train = Y[N_TEST:,:]
+
+        val_cut = int(0.2*X_train.shape[0])
+        X_val = X_train[0:val_cut,:]
+        Y_val = Y_train[0:val_cut,:]
+        X_train = X_train[val_cut:,:]
+        Y_train = Y_train[val_cut:,:]
         
-    return [X_train, Y_train, X_test1, Y_test1, X_test2, Y_test2, X_val, Y_val]
+    return [X_train, Y_train, X_test1, Y_test1, X_test2, Y_test2, X_val, Y_val, maps]
 
 
 
@@ -707,40 +700,95 @@ def RNN_tanh(X, params):
 
 
 ######### MAIN CODE #############################################################
-
 # Define architecture graph
-if ARCH == 'tanh':
-    params = RNN_tanh_params_init()
-    [Y_, h_net_seq] = RNN_tanh(X, params)
-elif ARCH == 'GRU':
-    params = GRU_params_init()
-    [Y_, h_net_seq] = GRU(X, params)
+if TASK == "pos":
+    # too much to integrate otherwise (masking mostly), so replacing the entire graph with Denis's (everything else
+    # will be kept the same though)
+    if ARCH == 'tanh':
+        model = TANH_attractor
+    elif ARCH == 'GRU':
+        model = GRU_attractor
+
+    model_ops = {'in': N_INPUT,
+                'hid': N_HIDDEN,
+                'attractor_dynamics': 'projection3',
+                'attractor_noise_level': NOISE_LEVEL,
+                'h_hid': N_ATTRACTOR_HIDDEN,
+                'masking': True,
+                'record_mutual_information': False,
+                'seq_len': SEQ_LEN,
+                'lrate': LRATE_PREDICTION, # just a placeholder, not actuallyused.
+                'n_attractor_iterations': N_ATTRACTOR_STEPS}
+
+    model_ops['prediction_type'] = 'seq' # for POS taskm
+
+    net_inputs = net_inputs = {'X': embed, 'mask': Y, 'attractor_tgt_net': attractor_tgt_net}
+    G_forw = model(model_ops, inputs=net_inputs, direction='forward', suffix='')
+    attr_loss = G_forw.attr_loss_op
+    attr_train_op_forw = G_forw.attr_train_op
+    h_clean_seq_flat_forw = G_forw.h_clean_seq_flat  # for computing entropy of states
+    h_net_seq_flat = G_forw.h_net_seq_flat  # -> attractor_tgt_net placeholder
+    output = G_forw.output
+
+    input_size_final_projection = N_HIDDEN
+    Y_ = project_into_output(Y, output, input_size_final_projection, N_CLASSES, model_ops)
+
+    # LOSS, ACC, & TRAIN OPS
+    pred_loss = task_loss(Y, Y_, model_ops)
+    attr_net_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS")
+    prediction_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "TASK_WEIGHTS")
+    if TRAIN_ATTR_WEIGHTS_ON_PREDICTION:
+        prediction_parameters += tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS")
+    accuracy = task_accuracy(Y, Y_, model_ops)
 else:
-    print("ERROR: undefined architecture")
-    exit()
+    if ARCH == 'tanh':
+        params = RNN_tanh_params_init()
+        [Y_, h_net_seq] = RNN_tanh(X, params)
+    elif ARCH == 'GRU':
+        params = GRU_params_init()
+        [Y_, h_net_seq] = GRU(X, params)
+    else:
+        print("ERROR: undefined architecture")
+        exit()
 
-# flattened across sequence to allow for batching properly.
-h_net_seq_flat = tf.reshape(h_net_seq, [-1, N_HIDDEN])
+    # flattened across sequence to allow for batching properly.
+    h_net_seq_flat = tf.reshape(h_net_seq, [-1, N_HIDDEN])
 
-# Define loss graphs
-if TASK == 'video_classification':
-    Y_flat = tf.squeeze(Y, axis=1)  # flatten the final dimension of 1
-    fake_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=Y_, labels=Y_flat)
-    pred_loss = tf.reduce_mean(fake_loss, name="loss")
-else:
-    pred_loss = tf.reduce_mean(tf.pow(Y_ - Y, 2) / .25)
+    # Define loss graphs
+    if TASK == 'video_classification':
+        Y_flat = tf.squeeze(Y, axis=1)  # flatten the final dimension of 1
+        fake_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=Y_, labels=Y_flat)
+        pred_loss = tf.reduce_mean(fake_loss, name="loss")
+    else:
+        pred_loss = tf.reduce_mean(tf.pow(Y_ - Y, 2) / .25)
 
 
-attr_loss, input_state = \
-    attractor_net_loss_function(attractor_tgt_net, params)
+    attr_loss, input_state = \
+        attractor_net_loss_function(attractor_tgt_net, params)
 
-# separate out parameters to be optimized
-prediction_parameters = params['W'].values() + params['b'].values()
-attr_net_parameters = attr_net.values()
-attr_net_parameters.remove(attr_net['Wconstr'])  # not a real parameter
+    # separate out parameters to be optimized
+    prediction_parameters = params['W'].values() + params['b'].values()
+    attr_net_parameters = attr_net.values()
+    attr_net_parameters.remove(attr_net['Wconstr'])  # not a real parameter
 
-if (TRAIN_ATTR_WEIGHTS_ON_PREDICTION):
-    prediction_parameters += attr_net_parameters
+    if (TRAIN_ATTR_WEIGHTS_ON_PREDICTION):
+        prediction_parameters += attr_net_parameters
+
+    # Evaluate model accuracy
+    if TASK == 'video_classification':
+        Y_flat = tf.squeeze(Y, axis=1)
+        correct_pred = tf.equal(tf.cast(tf.argmax(Y_, axis=1), tf.int32), tf.cast(Y_flat, tf.int32))
+        accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+    else:
+        correct_pred = tf.equal(tf.round(Y_), Y)
+        accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+
+
+
+
+
+
 
 # Define optimizer for prediction task
 optimizer_pred = tf.train.AdamOptimizer(learning_rate=LRATE_PREDICTION)
@@ -749,14 +797,7 @@ pred_train_op = optimizer_pred.minimize(pred_loss, var_list=prediction_parameter
 if (N_ATTRACTOR_STEPS > 0):
     optimizer_attr = tf.train.AdamOptimizer(learning_rate=LRATE_ATTRACTOR)
     attr_train_op = optimizer_attr.minimize(attr_loss, var_list=attr_net_parameters)
-# Evaluate model accuracy
-if TASK == 'video_classification':
-    Y_flat = tf.squeeze(Y, axis=1)
-    correct_pred = tf.equal(tf.cast(tf.argmax(Y_, axis=1), tf.int32), tf.cast(Y_flat, tf.int32))
-    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
-else:
-    correct_pred = tf.equal(tf.round(Y_), Y)
-    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
 
 # Initialize the variables (i.e. assign their default value)
 init = tf.global_variables_initializer()
@@ -779,13 +820,13 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
             writer = tf.summary.FileWriter("./tf.log", sess.graph)
             writer.close()
 
-        X_train, Y_train, X_test1, Y_test1, X_test2, Y_test2, X_val, Y_val = generate_examples()
+        X_train, Y_train, X_test1, Y_test1, X_test2, Y_test2, X_val, Y_val, maps = generate_examples()
         print('#train %d #validation %d #test %d' % (len(X_train),len(X_val),len(X_test1)))
 
         best_train_acc = -1000.
         for epoch in range(1, TRAINING_EPOCHS + 2):
             if (epoch - 1) % DISPLAY_EPOCH == 0:
-                if TASK == 'video_classification':
+                if TASK == 'video_classification' or TASK == "pos":
                     # TRAIN set:
                     ploss, train_acc = batch_tensor_collect(sess, [pred_loss, accuracy],
                                                             X, Y, X_train, Y_train, BATCH_SIZE)
@@ -799,12 +840,14 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
                     # ATTRACTOR(s) LOSS
                     hid_vals_arr = batch_tensor_collect(sess, [h_net_seq_flat],
                                                         X, Y, X_train, Y_train, BATCH_SIZE)
-
                     a_loss_val = [] # array to collapse later
-                    for batch_hid_vals in hid_vals_arr:
+                    n_splits = np.max([1, int(len(X_train) / BATCH_SIZE)]) # roughly keeps batches the same size as what fits on GPU
+                    lengths = [] # to keep track of respective sizes
+                    for batch_hid_vals in np.array_split(hid_vals_arr, n_splits):
+                        lengths.append(len(batch_hid_vals))
                         a_loss_val.append(
                             sess.run(attr_loss, feed_dict={attractor_tgt_net: batch_hid_vals}))
-                    aloss = np.mean(a_loss_val)
+                    aloss = np.sum([lengths[i]*a_loss_val[i] for i in range(len(lengths))]) / np.sum(lengths) # weighted_sum_of_losses / sum_of_weights
 
 		    early_stopper.update(ploss_val, train_acc, test1_acc)
                     print("  patience %3d LossPredValBest %.4f LossPredValCur %.4f TestAccBest %.4f" % (early_stopper.patience, early_stopper.best_val_err, ploss_val, early_stopper.best_test_acc))

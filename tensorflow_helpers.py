@@ -25,23 +25,33 @@ def mozer_get_variable(vname, mat_dim):
     return var
 
 
+################ batch_tensor_collect ###################################################
 def batch_tensor_collect(sess, input_tensors, X, Y, X_data, Y_data, batch_size):
     batches = get_batches(batch_size, X_data, Y_data)
+
     collect_outputs = [[] for i in range(len(input_tensors))]
+    actual_batch_sizes = []
     for (batch_x, batch_y) in batches:
         outputs = sess.run(input_tensors, feed_dict={X: batch_x, Y: batch_y})
+        actual_batch_sizes.append(batch_y.shape[0])
         for i, output in enumerate(outputs):
             collect_outputs[i].append(output)
 
     # merge all
-    for i in range(len(input_tensors)):
+    for i in range(len(collect_outputs)):
         output = np.array(collect_outputs[i])
         if len(output[0].flatten()) > 1: # for actual tensor collections, merge batches
-            output = np.concatenate(output, axis=0)
-        else: # for just values, find the average
-            output = np.mean(output)
+           output = np.concatenate(output, axis=0)
+
+        # for values (output[0] is just a number) , find the example-weighted average
+        elif len(output[0].flatten()) == 1: # find example weighted average of values
+            output = (np.sum(output * np.asarray(actual_batch_sizes,dtype=float)) /
+                      np.sum(np.asarray(actual_batch_sizes,dtype=float)))
         collect_outputs[i] = output
 
+    # if only one tensor was passed, collapse array structure
+    if len(collect_outputs)==1:
+        collect_outputs = collect_outputs[0]
     return collect_outputs
 
 
@@ -329,7 +339,7 @@ def run_attractor_net(input_bias, attr_net, ops):
 
 ############### ATTRACTOR NET LOSS FUNCTION #####################################
 
-def attractor_net_loss_function(attractor_tgt_net, attr_net, regularization_strength, noise_level_added, ops):
+def attractor_net_loss_function(attractor_tgt_net, attr_net, noise_level_added, ops):
     # attractor_tgt_net has dimensions #examples X #hidden
     #                   where the target value is tanh(attractor_tgt_net)
 
@@ -349,14 +359,15 @@ def attractor_net_loss_function(attractor_tgt_net, attr_net, regularization_stre
     attr_loss = tf.reduce_mean(tf.pow(attr_tgt - a_cleaned, 2)) / \
                 tf.reduce_mean(tf.pow(attr_tgt - tf.tanh(input_bias), 2))
 
-    if ops['attractor_regularization'] == 'l2_regularization':
-        print("L2 reg-n")
-        attr_loss += regularization_strength * tf.nn.l2_loss(attr_net['W'])
-    elif ops['attractor_regularization'] == 'l2_norm':
-        print("L2 norm")
-        attr_loss += regularization_strength * tf.norm(attr_net['W'], ord=2)
-    else:
-        print("No Regularization")
+    # DEPRECATED (not useful)
+    # if ops['attractor_regularization'] == 'l2_regularization':
+    #     print("L2 reg-n")
+    #     attr_loss += regularization_strength * tf.nn.l2_loss(attr_net['W'])
+    # elif ops['attractor_regularization'] == 'l2_norm':
+    #     print("L2 norm")
+    #     attr_loss += regularization_strength * tf.norm(attr_net['W'], ord=2)
+    # else:
+    #     print("No Regularization")
 
     return attr_loss, input_bias
 
@@ -431,7 +442,6 @@ def GRU_params_init(ops, suffix=''):
         'b': b
     }
     return params
-
 def GRU(X, ops, params):
     with tf.variable_scope("GRU"):
         W = params['W']

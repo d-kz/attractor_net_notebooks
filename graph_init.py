@@ -75,7 +75,6 @@ class GRU_attractor(object):
         # Attractor Loss/Training op
         #
         attr_loss_op, input_bias = attractor_net_loss_function(attractor_tgt_net, attr_net,
-                                                               ops['attractor_regularization_lambda'],
                                                                ops['attractor_noise_level'], ops)
 
         attr_net_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS" + '/{}'.format(suffix))
@@ -183,7 +182,6 @@ class TANH_attractor(object):
         # Attractor Loss/Training op
         #
         attr_loss_op, input_bias = attractor_net_loss_function(attractor_tgt_net, attr_net,
-                                                               ops['attractor_regularization_lambda'],
                                                                ops['attractor_noise_level'], ops)
 
         attr_net_parameters = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "ATTRACTOR_WEIGHTS" + '/{}'.format(suffix))

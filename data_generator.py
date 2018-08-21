@@ -207,7 +207,7 @@ def generate_parity_majority_sequences(N, count, task):
     #     return seq_plus_y
     return np.expand_dims(sequences, axis=2), y
 
-def get_pos_brown_dataset(directory, partition):
+def get_pos_brown_dataset(directory):
     with open(directory + "/data.pickle", 'rb') as handle:
         dataset = pickle.load(handle)
         dataset_X, dataset_Y = dataset['X'], dataset['Y']

@@ -36,6 +36,7 @@ def load_pretrained_embeddings(embedding_path, maps, ops):
 
 
 ################ get_batches ############################################################
+
 def get_batches(num, data, labels):
     '''
     Return a total of `num` random samples and labels.
@@ -44,12 +45,11 @@ def get_batches(num, data, labels):
     np.random.shuffle(idx)
     batches = []
     while len(idx) > 0:
-       cur_idx = idx[:min(num, len(idx))]
-
-       data_shuffle = [data[i] for i in cur_idx]
-       labels_shuffle = [labels[i] for i in cur_idx]
-       batches.append((np.asarray(data_shuffle), np.asarray(labels_shuffle)))
-       idx = idx[num:]
+        cur_idx = idx[:min(num, len(idx))]
+        data_shuffle = [data[i] for i in cur_idx]
+        labels_shuffle = [labels[i] for i in cur_idx]
+        batches.append((np.asarray(data_shuffle), np.asarray(labels_shuffle)))
+        idx = idx[num:]
     return batches
 
 # def get_model_title():
