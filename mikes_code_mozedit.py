@@ -824,6 +824,8 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
         print('#train %d #validation %d #test %d' % (len(X_train),len(X_val),len(X_test1)))
 
         best_train_acc = -1000.
+        best_test2_acc = -1000.
+
         for epoch in range(1, TRAINING_EPOCHS + 2):
             if (epoch - 1) % DISPLAY_EPOCH == 0:
                 if TASK == 'video_classification' or TASK == "pos":
@@ -902,59 +904,61 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
                     train_attractor_loss = True
                     train_prediction_loss = False
 
-
-	    #### Use this code if we want to integrate  prediction + denoising  training
+            #### Use this code if we want to integrate  prediction + denoising  training
             if (1):  # DEBUG
-		batches = get_batches(BATCH_SIZE, X_train, Y_train)
-		for (batch_x, batch_y) in batches:
-		    # Optimize all parameters except possibly for attractor weights
-		    if train_prediction_loss:
-			sess.run([pred_train_op], feed_dict={X: batch_x, Y: batch_y})
+                batches = get_batches(BATCH_SIZE, X_train, Y_train)
+                for (batch_x, batch_y) in batches:
+                    # Optimize all parameters except possibly for attractor weights
+                    if train_prediction_loss:
+                        sess.run([pred_train_op], feed_dict={X: batch_x, Y: batch_y})
 
-		    # Optimize attractor weights
-		    if train_attractor_loss:
-			hid_vals = sess.run(h_net_seq_flat, feed_dict={X: batch_x, Y: batch_y})
-			sess.run(attr_train_op, feed_dict={attractor_tgt_net: hid_vals})
-
+                    # Optimize attractor weights
+                    if train_attractor_loss:
+                        hid_vals = sess.run(h_net_seq_flat, feed_dict={X: batch_x, Y: batch_y})
+                        sess.run(attr_train_op, feed_dict={attractor_tgt_net: hid_vals})
             else:
-		if train_prediction_loss:
-		    batches = get_batches(BATCH_SIZE, X_train, Y_train)
-		    for (batch_x, batch_y) in batches:
-			# Optimize all parameters except possibly for attractor weights
-			sess.run([pred_train_op], feed_dict={X: batch_x, Y: batch_y})
+                if train_prediction_loss:
+                    batches = get_batches(BATCH_SIZE, X_train, Y_train)
+                    for (batch_x, batch_y) in batches:
+                        # Optimize all parameters except possibly for attractor weights
+                        sess.run([pred_train_op], feed_dict={X: batch_x, Y: batch_y})
 
-		# update attractor once the full epoch update for task weights 
-                # has finished: # note we still have to do it in batches, but 
-                # at least we don't shift attractor space
-		if train_attractor_loss:
-		    batches = get_batches(BATCH_SIZE, X_train, Y_train)
-		    for (batch_x, batch_y) in batches:
-			hid_vals = sess.run(h_net_seq_flat, feed_dict={X: batch_x, Y: batch_y})
-			sess.run(attr_train_op, feed_dict={attractor_tgt_net: hid_vals})
-	      
+                        # update attractor once the full epoch update for task weights
+                        # has finished: # note we still have to do it in batches, but
+                        # at least we don't shift attractor space
+                if train_attractor_loss:
+                    batches = get_batches(BATCH_SIZE, X_train, Y_train)
+                    for (batch_x, batch_y) in batches:
+                        hid_vals = sess.run(h_net_seq_flat, feed_dict={X: batch_x, Y: batch_y})
+                        sess.run(attr_train_op, feed_dict={attractor_tgt_net: hid_vals})
+
+            if (train_acc == 1.0):
+                saved_epoch.append(epoch)
+
+        # training finished, save results
         print("Optimization Finished!")
-	if TASK == 'video_classification':
-	    if (REPORT_BEST_TRAIN_PERFORMANCE):
-		saved_train_acc.append(best_train_acc)
-		saved_test1_acc.append(best_test1_acc)
-		saved_test2_acc.append(early_stopper.best_test_acc)
-	    else:
-		saved_train_acc.append(train_acc)
-		saved_test1_acc.append(test1_acc)
-		saved_test2_acc.append(early_stopper.best_test_acc)
-	else:
-	    if (REPORT_BEST_TRAIN_PERFORMANCE):
-		saved_train_acc.append(best_train_acc)
-		saved_test1_acc.append(best_test1_acc)
-		saved_test2_acc.append(best_test2_acc)
-	    else:
-		saved_train_acc.append(train_acc)
-		saved_test1_acc.append(test1_acc)
-		saved_test2_acc.append(test2_acc)
+        if TASK == 'video_classification':
+            if (REPORT_BEST_TRAIN_PERFORMANCE):
+                saved_train_acc.append(best_train_acc)
+                saved_test1_acc.append(best_test1_acc)
+                saved_test2_acc.append(early_stopper.best_test_acc)
+            else:
+                saved_train_acc.append(train_acc)
+                saved_test1_acc.append(test1_acc)
+                saved_test2_acc.append(early_stopper.best_test_acc)
+        else:
+            if (REPORT_BEST_TRAIN_PERFORMANCE):
+                saved_train_acc.append(best_train_acc)
+                saved_test1_acc.append(best_test1_acc)
+                saved_test2_acc.append(best_test2_acc)
+            else:
+                saved_train_acc.append(train_acc)
+                saved_test1_acc.append(test1_acc)
+                saved_test2_acc.append(test2_acc)
 
-	if (train_acc == 1.0):
-	    saved_epoch.append(epoch)
 
+
+    # Replications finished, print average results
 	# print weights
 	# for p in attr_net.values():
 	#    print (p.name, ' ', p.eval())
